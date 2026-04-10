@@ -2,7 +2,7 @@ import React from 'react';
 
 const SisterLogo = ({ style, className }) => (
   <img 
-    src="/src/assets/logo-sister.png" 
+    src="/logo-sister.png" 
     alt="SISTER Logo" 
     style={{ ...style, objectFit: 'contain' }} 
     className={className} 
