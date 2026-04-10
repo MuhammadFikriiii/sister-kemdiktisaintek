@@ -114,11 +114,15 @@ function App() {
       const data = await sisterApi.searchSDM(searchQuery, DEFAULT_ID_SP);
       const results = Array.isArray(data) ? data : (data.data || []);
       setSearchResults(results);
-    } catch (err) {
-      setError("Pencarian gagal.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const selectLecturer = (lecturer) => {
+    setSelectedLecturer(lecturer);
+    setCurrentView('detail');
+    setActiveTab('kepegawaian');
   };
 
   const fetchTabData = async (tab, id_sdm) => {
