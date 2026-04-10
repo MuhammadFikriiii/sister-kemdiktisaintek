@@ -1,0 +1,668 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Search, LogOut, Loader2, User, Briefcase,
+  GraduationCap, AlertCircle, ChevronRight,
+  ArrowLeft, LayoutDashboard, Database,
+  UserCheck, Award, BookOpen, Clock,
+  FileText, ShieldCheck, Fingerprint, Globe,
+  Link, Download, X, File, Eye, ListChecks,
+  FileBarChart, Newspaper, ExternalLink, Menu, X as CloseIcon
+} from 'lucide-react';
+import * as sisterApi from './services/api';
+import './App.css';
+import * as XLSX from 'xlsx';
+
+// Modular Components
+import SisterLogo from './components/SisterLogo';
+import LandingPage from './components/LandingPage';
+import LoginPage from './components/LoginPage';
+
+// Component for Authenticated Photo Loading
+const SdmAvatar = ({ id_sdm, nama, size = 'sm' }) => {
+  const [imgUrl, setImgUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let url = null;
+    const loadPhoto = async () => {
+      try {
+        url = await sisterApi.getPhotoBlob(id_sdm);
+        setImgUrl(url);
+      } catch (err) {
+        setImgUrl(`https://ui-avatars.com/api/?name=${nama}&background=f1f5f9&color=005596&bold=true`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPhoto();
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [id_sdm, nama]);
+
+  return (
+    <div className={size === 'sm' ? 'avatar-sm' : 'avatar-lg'} style={{ 
+      position: 'relative', 
+      overflow: 'hidden', 
+      background: '#f1f5f9', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      borderRadius: size === 'lg' ? '32px' : '50%'
+    }}>
+      {loading ? <Loader2 className="animate-spin" size={size === 'sm' ? 14 : 24} color="#94a3b8" /> : <img src={imgUrl} alt={nama} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+    </div>
+  );
+};
+
+function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('sister_token'));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // States
+  const [currentView, setCurrentView] = useState('search');
+  const [activeTab, setActiveTab] = useState('kepegawaian');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedLecturer, setSelectedLecturer] = useState(null);
+  const [tabData, setTabData] = useState(null);
+
+  const [selectedSemester, setSelectedSemester] = useState('20241');
+  const [eduDetail, setEduDetail] = useState(null);
+  const [loadingEdu, setLoadingEdu] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const [loginData, setLoginData] = useState({
+    username: "",
+    password: "",
+    id_pengguna: ""
+  });
+
+  const [guestView, setGuestView] = useState('landing');
+
+  const DEFAULT_ID_SP = import.meta.env.VITE_SISTER_ID_SP || "";
+
+  useEffect(() => {
+    if (selectedLecturer && currentView === 'detail') {
+      fetchTabData(activeTab, selectedLecturer.id_sdm);
+    }
+  }, [activeTab, selectedLecturer, currentView, selectedSemester]);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      if (!loginData.username || !loginData.password || !loginData.id_pengguna) {
+        throw new Error("Harap isi semua bidang input.");
+      }
+      await sisterApi.login(loginData);
+      setIsLoggedIn(true);
+    } catch (err) {
+      // Production ready: Only show friendly message, no technical logs
+      setError(err.message || "Autentikasi gagal. Sesi masuk tidak valid.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setLoading(true);
+    try {
+      const data = await sisterApi.searchSDM(searchQuery, DEFAULT_ID_SP);
+      const results = Array.isArray(data) ? data : (data.data || []);
+      setSearchResults(results);
+    } catch (err) {
+      setError("Pencarian gagal.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTabData = async (tab, id_sdm) => {
+    setLoading(true);
+    setTabData(null);
+    try {
+      let res;
+      if (tab === 'kepegawaian') res = await sisterApi.getKepegawaian(id_sdm);
+      if (tab === 'jafung') res = await sisterApi.getJafung(id_sdm);
+      if (tab === 'pendidikan') res = await sisterApi.getEducation(id_sdm);
+      if (tab === 'bkd') res = await sisterApi.getBKD(id_sdm, selectedSemester);
+      if (tab === 'bkd_laporan') res = await sisterApi.getLaporanAkhirBKD(id_sdm);
+      if (tab === 'publikasi') res = await sisterApi.getPublikasi(id_sdm);
+
+      let finalData = res;
+      if (res && res.data && !Array.isArray(res)) finalData = res.data;
+      setTabData(finalData);
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setError("Data tidak ditemukan di server SISTER.");
+      } else {
+        setError(`Gagal memuat data ${formatKey(tab)}.`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEduDetail = async (id) => {
+    setLoadingEdu(true);
+    setEduDetail(null);
+    try {
+      const data = await sisterApi.getEducationDetail(id);
+      setEduDetail(data.data || data);
+    } catch (err) {
+      alert("Gagal memuat detail pendidikan.");
+    } finally {
+      setLoadingEdu(false);
+    }
+  };
+
+  const formatKey = (key) => {
+    const mapping = {
+      'id': 'ID Record',
+      'nidn': 'NIDN / NUPTK',
+      'nip': 'Nomor Induk Pegawai (NIP)',
+      'nuptk': 'NUPTK',
+      'nama_sdm': 'Nama Lengkap',
+      'nama_status_pegawai': 'Status Pegawai',
+      'sk_cpns': 'Nomor SK CPNS',
+      'tanggal_sk_cpns': 'Tanggal SK CPNS',
+      'sk_tmmd': 'Nomor SK TMMD',
+      'tmmd': 'Terhitung Mulai Masa Dinas (TMMD)',
+      'id_sumber_gaji': 'ID Sumber Gaji',
+      'sumber_gaji': 'Sumber Pendanaan Gaji',
+      'status_kepegawaian': 'Status Kepegawaian',
+      'ikatan_kerja': 'Ikatan Kerja',
+      'jabatan_fungsional': 'Jabatan Fungsional',
+      'sk': 'Nomor SK',
+      'tanggal_mulai': 'Terhitung Mulai Tanggal (TMT)',
+      'jenjang_pendidikan': 'Jenjang Pendidikan',
+      'gelar_akademik': 'Gelar Akademik',
+      'bidang_studi': 'Bidang Studi / Keilmuan',
+      'nama_perguruan_tinggi': 'Nama Perguruan Tinggi',
+      'tahun_lulus': 'Tahun Kelulusan',
+      'tanggal_lulus': 'Tanggal Kelulusan',
+      'nomor_induk': 'Nomor Induk Mahasiswa (NIM)',
+      'jumlah_semester': 'Jumlah Semester Terlewati',
+      'jumlah_sks': 'Total SKS Lulus',
+      'ipk': 'Indeks Prestasi Kumulatif (IPK)',
+      'sk_penyetaraan': 'Nomor SK Penyetaraan',
+      'nomor_ijazah': 'Nomor Ijazah',
+      'judul_tesis': 'Judul Tesis / Disertasi',
+      'kategori_kegiatan': 'Kategori Kegiatan',
+      'nama_program_studi': 'Nama Program Studi',
+      'tahun_masuk': 'Tahun Masuk Kuliah',
+      'jenis_ajuan': 'Jenis Pengajuan',
+      'id_sdm': 'ID SDM SISTER',
+      'id_reg_ptk': 'ID Registrasi PTK',
+      'id_smt': 'ID Semester',
+      'sks_kinerja_ajar': 'SKS Kinerja Pengajaran',
+      'sks_lebih_ajar': 'SKS Kelebihan Pengajaran',
+      'sks_kinerja_didik': 'SKS Kinerja Pendidikan',
+      'sks_lebih_didik': 'SKS Kelebihan Pendidikan',
+      'sks_kinerja_lit': 'SKS Kinerja Penelitian',
+      'sks_lebih_lit': 'SKS Kelebihan Penelitian',
+      'sks_kinerja_pengmas': 'SKS Kinerja Pengabdian Masyarakat',
+      'sks_lebih_pengmas': 'SKS Kelebihan Pengabdian',
+      'sks_kinerja_penunjang': 'SKS Kinerja Penunjang',
+      'sks_lebih_tunjang': 'SKS Kelebihan Penunjang',
+      'sks_kinerja': 'Total SKS Kinerja',
+      'sks_lebih': 'Total SKS Kelebihan',
+      'stat_kewajiban': 'Status Kewajiban BKD',
+      'stat_tugas': 'Status Tugas Tambahan',
+      'stat_belajar': 'Status Belajar / Tugas Belajar',
+      'id_jabfung': 'ID Jabatan Fungsional',
+      'simpulan_asesor': 'Kesimpulan Hasil Asesor',
+      'judul': 'Judul Publikasi / Karya',
+      'quartile': 'Peringkat Quartile',
+      'jenis_publikasi': 'Jenis Publikasi Ilmiah',
+      'tanggal': 'Tanggal Publikasi',
+      'asal_data': 'Sumber Data Sinkronisasi',
+      'id_program_studi': 'ID Prodi',
+      'id_jenjang_pendidikan': 'ID Jenjang',
+      'id_gelar_akademik': 'ID Gelar',
+      'id_bidang_studi': 'ID Bidang Studi',
+      'judul_tugas_akhir': 'Judul Tugas Akhir',
+      'tanggal_sk_penyetaraan': 'Tanggal SK Penyetaraan',
+    };
+    return mapping[key] || key;
+  };
+
+  const getF = (obj, key) => (obj && obj[key] !== undefined && obj[key] !== null ? String(obj[key]) : '-');
+
+  const handleExportExcel = () => {
+    if (!tabData) return;
+
+    try {
+      const wb = XLSX.utils.book_new();
+      let exportRows = [];
+      let sheetName = activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
+
+      if (activeTab === 'kepegawaian') {
+        const row = {};
+        Object.keys(tabData).forEach(k => {
+          row[formatKey(k)] = getF(tabData, k);
+        });
+        exportRows = [row];
+        sheetName = "Kepegawaian";
+      } else {
+        exportRows = (Array.isArray(tabData) ? tabData : []).map(item => {
+          const row = {};
+          Object.keys(item).forEach(k => {
+            if (k !== 'dokumen') row[formatKey(k)] = getF(item, k);
+          });
+          return row;
+        });
+      }
+
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+
+      if (exportRows.length > 0) {
+        const colsWidth = [];
+        const headers = Object.keys(exportRows[0]);
+
+        headers.forEach((header, i) => {
+          let maxLen = header.length;
+          exportRows.forEach(row => {
+            const val = row[header] ? String(row[header]) : "";
+            if (val.length > maxLen) maxLen = val.length;
+          });
+          colsWidth[i] = { wch: maxLen + 5 };
+        });
+        ws["!cols"] = colsWidth;
+        ws["!autofilter"] = { ref: XLSX.utils.encode_range(XLSX.utils.decode_range(ws["!ref"])) };
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, `SISTER_${activeTab}_${selectedLecturer.nama_sdm.replace(/\s+/g, '_')}.xlsx`);
+    } catch (err) {
+      alert("Gagal melakukan export Excel.");
+    }
+  };
+
+
+  if (!isLoggedIn) {
+    return (
+      <div className="guest-layout-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+        <header className="landing-nav" style={{ 
+          padding: '15px 8%', 
+          backgroundColor: 'rgba(255,255,255,0.95)', 
+          backdropFilter: 'blur(12px)', 
+          borderBottom: '1px solid #f1f5f9',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1000,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => setGuestView('landing')}>
+            <SisterLogo style={{ width: '42px', height: '42px' }} />
+            <div style={{ lineHeight: 1 }}>
+              <h1 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.8px' }}>SISTER</h1>
+              <p style={{ fontSize: '0.6rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Global Dashboard</p>
+            </div>
+          </div>
+          <button onClick={() => setGuestView(guestView === 'landing' ? 'login' : 'landing')} className="btn-search" style={{ borderRadius: '12px', padding: '10px 24px', fontSize: '0.85rem' }}>
+            {guestView === 'landing' ? 'Masuk Sekarang' : 'Beranda'}
+          </button>
+        </header>
+
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {guestView === 'landing' ? (
+            <LandingPage setGuestView={setGuestView} />
+          ) : (
+            <LoginPage 
+              loginData={loginData} 
+              setLoginData={setLoginData} 
+              handleLogin={handleLogin} 
+              loading={loading} 
+              error={error} 
+              setError={setError} 
+            />
+          )}
+        </main>
+
+        <footer style={{ padding: '50px 8%', background: '#0f172a', color: 'white' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '30px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <SisterLogo style={{ width: '32px', height: '32px' }} />
+              <span style={{ fontWeight: 900, fontSize: '1.2rem' }}>SISTER 2026</span>
+            </div>
+            <p style={{ opacity: 0.6, fontSize: '0.85rem' }}>Membantu digitalisasi dan efisiensi pengelolaan data perguruan tinggi.</p>
+            <p style={{ fontWeight: 800, fontSize: '0.85rem' }}>© 2026 Integrated Data Systems.</p>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-container">
+      <nav className="navbar">
+        <div className="navbar-left">
+          <button className="mobile-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+            {isSidebarOpen ? <CloseIcon size={24} /> : <Menu size={24} />}
+          </button>
+          <SisterLogo className="logo-sister" style={{ width: '38px', height: '38px', cursor: 'pointer' }} />
+          <div className="navbar-title"><h2>SISTER</h2><span>| Integrasi Data SDM</span></div>
+        </div>
+        <button className="btn-logout-alt" onClick={() => {
+          localStorage.removeItem('sister_token');
+          setSearchResults([]);
+          setSelectedLecturer(null);
+          setTabData(null);
+          setSearchQuery('');
+          setIsLoggedIn(false);
+        }}>
+          <LogOut size={16} /> <span className="hide-mobile">Keluar</span>
+        </button>
+      </nav>
+
+      <div className="main-layout">
+        <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)}></div>
+        <aside className={`sidebar ${isSidebarOpen ? 'mobile-open' : ''}`}>
+          <div className="sidebar-content">
+            <div className={`nav-item ${currentView === 'search' ? 'active' : ''}`} onClick={() => { setCurrentView('search'); setIsSidebarOpen(false); }}><LayoutDashboard size={20} /> <span>Beranda</span></div>
+            <div className="menu-label">PENARIKAN DATA</div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'kepegawaian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('kepegawaian'), setIsSidebarOpen(false))}><UserCheck size={20} /> <span>Kepegawaian</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'jafung' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('jafung'), setIsSidebarOpen(false))}><Award size={20} /> <span>Jabatan Fungsional</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pendidikan' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pendidikan'), setIsSidebarOpen(false))}><BookOpen size={20} /> <span>Pendidikan Formal</span></div>
+
+            <div className="menu-label">BEBAN KERJA (BKD)</div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'bkd' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('bkd'), setIsSidebarOpen(false))}><ListChecks size={20} /> <span>BKD Pengajaran</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'bkd_laporan' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('bkd_laporan'), setIsSidebarOpen(false))}><FileBarChart size={20} /> <span>Laporan Akhir BKD</span></div>
+
+            <div className="menu-label">PUBLIKASI</div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'publikasi' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('publikasi'), setIsSidebarOpen(false))}><Newspaper size={20} /> <span>Publikasi Ilmiah</span></div>
+          </div>
+        </aside>
+
+        <main className="content-body">
+          {currentView === 'search' ? (
+            <div className="welcome-card">
+              <h1 style={{ fontSize: '2.5rem', fontWeight: 800 }}>Selamat Datang</h1>
+              <p style={{ color: '#64748b', fontSize: '1.1rem', marginTop: '12px' }}>Cari dosen untuk melihat riwayat lengkap Kepegawaian, Pendidikan, BKD, dan Publikasi.</p>
+              <form className="search-field" style={{ marginTop: '44px' }} onSubmit={handleSearch}>
+                <Search size={22} style={{ marginLeft: '20px', color: '#94a3b8' }} />
+                <input type="text" placeholder="Masukkan nama dosen yang ingin dicari..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                <button type="submit" className="btn-search">CARI DATA</button>
+              </form>
+              <div className="sdm-grid">
+                {searchResults.map(item => (
+                  <div key={item.id_sdm} className="sdm-item" onClick={() => selectLecturer(item)}>
+                    <SdmAvatar id_sdm={item.id_sdm} nama={item.nama_sdm} size="sm" />
+                    <div style={{ flex: 1 }}>
+                      <span className="status-badge" style={{ marginBottom: '10px' }}>{getF(item, 'nama_status_pegawai')}</span>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>{getF(item, 'nama_sdm')}</h3>
+                      <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>NIDN: <strong>{getF(item, 'nidn')}</strong></p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="detail-page" style={{ animation: 'fadeIn 0.4s ease-out' }}>
+              <div className="banner-blue">
+                <SdmAvatar id_sdm={selectedLecturer.id_sdm} nama={selectedLecturer.nama_sdm} size="lg" />
+                <div className="banner-text">
+                  <h1>{getF(selectedLecturer, 'nama_sdm')}</h1>
+                  <div className="banner-badges"><div className="card-badge">NIDN: {getF(selectedLecturer, 'nidn')}</div><div className="card-badge">{getF(selectedLecturer, 'nama_status_pegawai')}</div></div>
+                </div>
+              </div>
+
+              <div className="profile-card">
+                <div className="profile-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {activeTab === 'kepegawaian' && <><UserCheck size={22} /> DATA KEPEGAWAIAN LENGKAP</>}
+                  {activeTab === 'jafung' && <><Award size={22} /> RIWAYAT JABATAN FUNGSIONAL</>}
+                  {activeTab === 'pendidikan' && <><BookOpen size={22} /> RIWAYAT PENDIDIKAN FORMAL</>}
+                  {activeTab === 'bkd' && <><ListChecks size={22} /> BKD PENGAJARAN (Sem: {selectedSemester})</>}
+                  {activeTab === 'bkd_laporan' && <><FileBarChart size={22} /> LAPORAN AKHIR BKD</>}
+                  {activeTab === 'publikasi' && <><Newspaper size={22} /> DAFTAR PUBLIKASI ILMIAH</>}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {activeTab === 'bkd' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '0.75rem', fontWeight: 800 }}>SEMESTER:</span><input type="text" value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} style={{ width: '90px', padding: '6px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700 }} /></div>
+                    )}
+                    <button className="btn-detail-row" onClick={handleExportExcel} style={{ background: '#166534', color: 'white', borderColor: '#166534' }}>
+                      <FileText size={16} style={{ marginRight: '6px' }} /> Export Excel
+                    </button>
+                  </div>
+                </div>
+
+                <div className="profile-card-body">
+                  {loading && !loadingEdu ? (
+                    <div style={{ textAlign: 'center', padding: '60px' }}><Loader2 className="animate-spin" size={40} color="#005596" /></div>
+                  ) : tabData ? (
+                    <div className="table-wrapper">
+                      {activeTab === 'kepegawaian' && (
+                        <table className="info-table">
+                          <tbody>
+                            {Object.keys(tabData).map(key => (
+                              <tr key={key}><td className="label-cell">{formatKey(key)}</td><td className="value-cell">{getF(tabData, key)}</td></tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {activeTab === 'jafung' && (
+                        <table className="info-table">
+                          <thead><tr><th>ID Record</th><th>Jabatan Fungsional</th><th>Nomor SK</th><th>Terhitung Mulai Tanggal Jabatan</th></tr></thead>
+                          <tbody>
+                            {(Array.isArray(tabData) ? tabData : []).map((j, i) => (
+                              <tr key={i}>
+                                <td style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{getF(j, 'id')}</td>
+                                <td><strong>{getF(j, 'jabatan_fungsional')}</strong></td>
+                                <td>{getF(j, 'sk')}</td>
+                                <td>{getF(j, 'tanggal_mulai')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {activeTab === 'pendidikan' && (
+                        <table className="info-table">
+                          <thead><tr><th>ID</th><th>Jenjang</th><th>Perguruan Tinggi</th><th>Tahun Lulus</th><th style={{ textAlign: 'center' }}>Opsi</th></tr></thead>
+                          <tbody>
+                            {(Array.isArray(tabData) ? tabData : []).map((edu, i) => (
+                              <tr key={i}>
+                                <td style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{getF(edu, 'id')}</td>
+                                <td><span className="status-badge" style={{ backgroundColor: '#005596', color: 'white', border: 'none' }}>{getF(edu, 'jenjang_pendidikan')}</span></td>
+                                <td><strong>{getF(edu, 'nama_perguruan_tinggi')}</strong></td>
+                                <td>{getF(edu, 'tahun_lulus')}</td>
+                                <td style={{ textAlign: 'center' }}><button className="btn-detail-row" onClick={() => openEduDetail(edu.id)}><Eye size={16} style={{ marginRight: '6px' }} /> Detail</button></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {activeTab === 'bkd' && (
+                        <table className="info-table">
+                          <thead>
+                            <tr>
+                              <th>Nama Dosen</th>
+                              <th>NIDN</th>
+                              <th>SMT</th>
+                              <th>Unsur</th>
+                              <th>Judul Kegiatan</th>
+                              <th style={{ textAlign: 'center' }}>SKS</th>
+                              <th style={{ textAlign: 'center' }}>Nilai</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(Array.isArray(tabData) ? tabData : []).map((b, i) => (
+                              <tr key={i}>
+                                <td>{getF(b, 'nm_sdm')}</td>
+                                <td>{getF(b, 'nidn')}</td>
+                                <td>{getF(b, 'id_smt')}</td>
+                                <td>{getF(b, 'unsur')}</td>
+                                <td><strong style={{ fontSize: '0.85rem' }}>{getF(b, 'judul_keg')}</strong></td>
+                                <td style={{ textAlign: 'center' }}><strong>{getF(b, 'beban_sks')}</strong></td>
+                                <td style={{ textAlign: 'center' }}><strong>{getF(b, 'nilai')}</strong></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {activeTab === 'bkd_laporan' && (
+                        <table className="info-table">
+                          <thead>
+                            <tr>
+                              <th>ID Registrasi</th>
+                              <th>Semester</th>
+                              <th>Kinerja Ajar</th>
+                              <th>Lebih Ajar</th>
+                              <th>Kinerja Didik</th>
+                              <th>Lebih Didik</th>
+                              <th>Kinerja Lit</th>
+                              <th>Lebih Lit</th>
+                              <th>Kinerja Pengmas</th>
+                              <th>Lebih Pengmas</th>
+                              <th>Kinerja Penunjang</th>
+                              <th>Lebih Penunjang</th>
+                              <th>Total Kinerja</th>
+                              <th>Total Lebih</th>
+                              <th>Stat Kewajiban</th>
+                              <th>Stat Tugas</th>
+                              <th>Stat Belajar</th>
+                              <th>ID Jafung</th>
+                              <th>Simpulan Asesor</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(Array.isArray(tabData) ? tabData : []).map((l, i) => (
+                              <tr key={i}>
+                                <td style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{getF(l, 'id_reg_ptk')}</td>
+                                <td><strong>{getF(l, 'id_smt')}</strong></td>
+                                <td>{getF(l, 'sks_kinerja_ajar')}</td>
+                                <td>{getF(l, 'sks_lebih_ajar')}</td>
+                                <td>{getF(l, 'sks_kinerja_didik')}</td>
+                                <td>{getF(l, 'sks_lebih_didik')}</td>
+                                <td>{getF(l, 'sks_kinerja_lit')}</td>
+                                <td>{getF(l, 'sks_lebih_lit')}</td>
+                                <td>{getF(l, 'sks_kinerja_pengmas')}</td>
+                                <td>{getF(l, 'sks_lebih_pengmas')}</td>
+                                <td>{getF(l, 'sks_kinerja_penunjang')}</td>
+                                <td>{getF(l, 'sks_lebih_tunjang')}</td>
+                                <td style={{ color: '#005596', fontWeight: 800 }}>{getF(l, 'sks_kinerja')}</td>
+                                <td style={{ color: '#eab308', fontWeight: 800 }}>{getF(l, 'sks_lebih')}</td>
+                                <td>{getF(l, 'stat_kewajiban')}</td>
+                                <td>{getF(l, 'stat_tugas')}</td>
+                                <td>{getF(l, 'stat_belajar')}</td>
+                                <td>{getF(l, 'id_jabfung')}</td>
+                                <td style={{ color: l.simpulan_asesor === 'M' ? '#166534' : '#b91c1c', fontWeight: 800 }}>{getF(l, 'simpulan_asesor')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {activeTab === 'publikasi' && (
+                        <table className="info-table">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Kategori Kegiatan</th>
+                              <th>Judul Publikasi</th>
+                              <th style={{ textAlign: 'center' }}>Quartile</th>
+                              <th>Tanggal</th>
+                              <th>Sumber Data</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(Array.isArray(tabData) ? tabData : []).map((p, i) => (
+                              <tr key={i}>
+                                <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#94a3b8' }}>{getF(p, 'id')}</td>
+                                <td><span style={{ fontSize: '0.8rem', color: '#64748b' }}>{getF(p, 'kategori_kegiatan')}</span></td>
+                                <td><strong>{getF(p, 'judul')}</strong></td>
+                                <td style={{ textAlign: 'center' }}><span className="status-badge" style={{ background: '#fef3c7', color: '#92400e' }}>{getF(p, 'quartile')}</span></td>
+                                <td>{getF(p, 'tanggal')}</td>
+                                <td><span className="status-badge" style={{ background: '#dcfce7', color: '#166534' }}>{getF(p, 'asal_data')}</span></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  ) : <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Informasi tidak tersedia di server.</p>}
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Modal Detail & Dokumen */}
+      {(loadingEdu || eduDetail) && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}><SisterLogo style={{ width: '36px', height: '36px' }} /><h2>Detail Riwayat Pendidikan Full</h2></div>
+              <button className="close-btn" onClick={() => (setEduDetail(null), setLoadingEdu(false))}><X size={20} /></button>
+            </div>
+            <div className="modal-body">
+              {loadingEdu ? (<div style={{ textAlign: 'center', padding: '60px' }}><Loader2 className="animate-spin" size={48} color="#005596" /></div>) : (
+                <div className="edu-detail-grid">
+                  <div style={{ background: 'var(--primary-light)', padding: '24px', borderRadius: '24px', border: '2px solid #d0e6ff', marginBottom: '32px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                      <div style={{ background: 'var(--primary)', color: 'white', padding: '18px 24px', borderRadius: '20px', fontSize: '2.2rem', fontWeight: 900 }}>{getF(eduDetail, 'jenjang_pendidikan')}</div>
+                      <div>
+                        <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e293b' }}>{getF(eduDetail, 'nama_perguruan_tinggi')}</h3>
+                        <p style={{ color: '#475569', fontSize: '1.1rem', fontWeight: 600 }}>Gelar: <span style={{ color: 'var(--primary)' }}>{getF(eduDetail, 'gelar_akademik')}</span></p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <h4 className="card-label">DATA ATRIBUT LENGKAP</h4>
+                  <table className="info-table-mini">
+                    <tbody>
+                      {Object.keys(eduDetail).map(key => key !== 'dokumen' && (
+                        <tr key={key}><td className="label-cell">{formatKey(key)}</td><td className="value-cell">{getF(eduDetail, key)}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {eduDetail.dokumen && (
+                    <div style={{ marginTop: '40px' }}>
+                      <h4 className="card-label" style={{ color: '#166534' }}>DOKUMEN PENDUKUNG (IJAZAH / TRANSKRIP)</h4>
+                      <div className="doc-list" style={{ marginTop: '16px' }}>
+                        {Array.isArray(eduDetail.dokumen) && eduDetail.dokumen.length > 0 ? eduDetail.dokumen.map((doc, idx) => (
+                          <div key={idx} className="doc-item" style={{ background: '#ffffff', border: '2.5px solid #f1f5f9', padding: '20px', borderRadius: '20px' }}>
+                            <div style={{ background: '#f1f5f9', padding: '14px', borderRadius: '18px' }}><FileText size={30} color="#005596" /></div>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1e293b' }}>{doc.nama}</p>
+                              <span className="status-badge" style={{ marginTop: '4px' }}>{doc.jenis_dokumen}</span>
+                              <p style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', marginTop: '4px' }}>{doc.nama_file}</p>
+                            </div>
+                            <a
+                              href={doc.tautan}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn-download"
+                              style={{ padding: '12px 18px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', borderRadius: '14px' }}
+                              download={doc.nama_file}
+                            >
+                              <Download size={18} /> <span style={{ fontWeight: 700 }}>Download</span>
+                            </a>
+                          </div>
+                        )) : <p style={{ color: '#94a3b8', fontStyle: 'italic' }}>Tidak ada dokumen pendukung terlampir.</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
