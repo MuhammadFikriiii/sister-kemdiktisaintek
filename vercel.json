@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://sister-api.kemdiktisaintek.go.id/ws.php/1.0/$1"
+    }
+  ]
+}
