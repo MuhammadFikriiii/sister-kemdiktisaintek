@@ -10,7 +10,7 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
       alignItems: 'center',
       justifyContent: 'center',
       padding: '60px 20px',
-      background: 'linear-gradient(135deg, #005596 0%, #003056 100%)',
+      background: 'linear-gradient(135deg, #ac1234 0%, #6d0b21 100%)',
       position: 'relative',
       overflow: 'hidden',
       minHeight: 'calc(100vh - 80px)' // Adjust based on navbar height
@@ -34,7 +34,7 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
           <div style={{ background: '#f8fafc', width: '80px', height: '80px', borderRadius: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' }}>
             <SisterLogo style={{ width: '56px', height: '56px' }} />
           </div>
-          <h2 style={{ fontSize: 'clamp(1.5rem, 5vw, 1.8rem)', fontWeight: 900, color: '#005596', letterSpacing: '-1.2px' }}>SISTER LOGIN</h2>
+          <h2 style={{ fontSize: 'clamp(1.5rem, 5vw, 1.8rem)', fontWeight: 900, color: '#ac1234', letterSpacing: '-1.2px' }}>SISTER LOGIN</h2>
           <div style={{ height: '3px', width: '40px', background: '#eab308', margin: '15px auto' }}></div>
           <p style={{ color: '#64748b', fontWeight: 600, fontSize: '0.9rem' }}>Akses Dashboard Integrasi Data</p>
         </div>
@@ -48,7 +48,7 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
 
         <form onSubmit={handleLogin}>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontWeight: 800, fontSize: '0.7rem', color: '#005596', letterSpacing: '0.5px', marginBottom: '8px', textTransform: 'uppercase' }}>Username</label>
+            <label style={{ display: 'block', fontWeight: 800, fontSize: '0.7rem', color: '#ac1234', letterSpacing: '0.5px', marginBottom: '8px', textTransform: 'uppercase' }}>Username</label>
             <input
               type="text"
               value={loginData.username}
@@ -59,7 +59,7 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
             />
           </div>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontWeight: 800, fontSize: '0.7rem', color: '#005596', letterSpacing: '0.5px', marginBottom: '8px', textTransform: 'uppercase' }}>Password</label>
+            <label style={{ display: 'block', fontWeight: 800, fontSize: '0.7rem', color: '#ac1234', letterSpacing: '0.5px', marginBottom: '8px', textTransform: 'uppercase' }}>Password</label>
             <input
               type="password"
               value={loginData.password}
@@ -70,7 +70,7 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
             />
           </div>
           <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontWeight: 800, fontSize: '0.7rem', color: '#005596', letterSpacing: '0.5px', marginBottom: '8px', textTransform: 'uppercase' }}>ID Pengguna (UUID)</label>
+            <label style={{ display: 'block', fontWeight: 800, fontSize: '0.7rem', color: '#ac1234', letterSpacing: '0.5px', marginBottom: '8px', textTransform: 'uppercase' }}>ID Pengguna (UUID)</label>
             <input
               type="text"
               value={loginData.id_pengguna}
@@ -80,7 +80,7 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
               required
             />
           </div>
-          <button type="submit" disabled={loading} className="btn-search" style={{ width: '100%', padding: '18px', borderRadius: '16px', fontSize: '1rem', fontWeight: 800, letterSpacing: '1px', background: loading ? '#94a3b8' : '#005596', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+          <button type="submit" disabled={loading} className="btn-search" style={{ width: '100%', padding: '18px', borderRadius: '16px', fontSize: '1rem', fontWeight: 800, letterSpacing: '1px', background: loading ? '#94a3b8' : '#ac1234', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
             {loading ? <><Loader2 className="animate-spin" size={20} /> MEMVERIFIKASI...</> : "MASUK SEKARANG"}
           </button>
         </form>

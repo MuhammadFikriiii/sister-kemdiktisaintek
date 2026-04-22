@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # 1. Forward request jalur API ke file proxy lokal (karena cPanel tidak punya akses ke Vercel Proxy)
+  RewriteRule ^api/(.*)$ proxy.php [L]
+
+  # 2. Tangani Fallback rute (React Router SPA) agar tidak error 404 saat direfresh
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  # Pastikan tidak memblokir akses ke rute API dan Proxy
+  RewriteCond %{REQUEST_URI} !api/ [NC]
+  RewriteCond %{REQUEST_URI} !proxy\.php [NC]
+  RewriteRule ^(.*)$ index.html [QSA,L]
+</IfModule>

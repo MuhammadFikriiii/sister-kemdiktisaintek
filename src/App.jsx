@@ -307,7 +307,7 @@ function App() {
             <SisterLogo style={{ width: '42px', height: '42px' }} />
             <div style={{ lineHeight: 1 }}>
               <h1 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.8px' }}>SISTER</h1>
-              <p style={{ fontSize: '0.6rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Global Dashboard</p>
+              <p style={{ fontSize: '0.6rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>STIE PANCASETIA</p>
             </div>
           </div>
           <button onClick={() => setGuestView(guestView === 'landing' ? 'login' : 'landing')} className="btn-search" style={{ borderRadius: '12px', padding: '10px 24px', fontSize: '0.85rem' }}>
@@ -330,14 +330,40 @@ function App() {
           )}
         </main>
 
-        <footer style={{ padding: '50px 8%', background: '#0f172a', color: 'white' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '30px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <SisterLogo style={{ width: '32px', height: '32px' }} />
-              <span style={{ fontWeight: 900, fontSize: '1.2rem' }}>SISTER 2026</span>
+        <footer style={{ padding: '80px 8% 40px', background: 'white', borderTop: '1px solid #f1f5f9', color: '#1e293b' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '40px', marginBottom: '60px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <SisterLogo style={{ width: '48px', height: '48px' }} />
+                <div>
+                  <h3 style={{ fontWeight: 900, fontSize: '1.5rem', color: '#ac1234', letterSpacing: '-1px' }}>SISTER</h3>
+                  <p style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>STIE PANCASETIA</p>
+                </div>
+              </div>
+              <p style={{ opacity: 0.8, fontSize: '0.9rem', lineHeight: 1.6, maxWidth: '300px' }}>Sistem Informasi Sumberdaya Terintegrasi untuk pengelolaan data dosen dan tenaga kependidikan STIE Pancasetia.</p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                 {/* Social placeholders similar to SIPERU */}
+                 <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ac1234' }}><Globe size={18} /></div>
+                 <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ac1234' }}><Link size={18} /></div>
+              </div>
             </div>
-            <p style={{ opacity: 0.6, fontSize: '0.85rem' }}>Membantu digitalisasi dan efisiensi pengelolaan data perguruan tinggi.</p>
-            <p style={{ fontWeight: 800, fontSize: '0.85rem' }}>© 2026 Integrated Data Systems.</p>
+
+            <div>
+              <h4 style={{ fontWeight: 900, fontSize: '0.8rem', color: '#ac1234', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '24px' }}>KAMPUS BANJARMASIN</h4>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: 1.6 }}>Jl. Ahmad Yani km 5.5 RT. 08 Banjarmasin<br />(0511) 325 6560</p>
+            </div>
+
+            <div>
+              <h4 style={{ fontWeight: 900, fontSize: '0.8rem', color: '#ac1234', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '24px' }}>KAMPUS BANJARBARU</h4>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: 1.6 }}>Jl. Trikora RT.018 RW.03 Kel. Guntung Manggis Kec. Landasan Ulin Banjarbaru<br />(0511) 4777200</p>
+            </div>
+          </div>
+          <div style={{ borderTop: '1.5px solid #f1f5f9', paddingTop: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+            <p style={{ fontWeight: 800, fontSize: '0.85rem', color: '#94a3b8' }}>© {new Date().getFullYear()} <span style={{ color: '#ac1234' }}>IT STIE PANCASETIA</span>. All Rights Reserved.</p>
+            <div style={{ display: 'flex', gap: '20px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>Privacy Policy</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>Terms of Service</span>
+            </div>
           </div>
         </footer>
       </div>
@@ -352,7 +378,7 @@ function App() {
             {isSidebarOpen ? <CloseIcon size={24} /> : <Menu size={24} />}
           </button>
           <SisterLogo className="logo-sister" style={{ width: '38px', height: '38px', cursor: 'pointer' }} />
-          <div className="navbar-title"><h2>SISTER</h2><span>| Integrasi Data SDM</span></div>
+          <div className="navbar-title"><h2>SISTER</h2><span>| STIE PANCASETIA</span></div>
         </div>
         <button className="btn-logout-alt" onClick={() => {
           localStorage.removeItem('sister_token');
@@ -410,7 +436,7 @@ function App() {
             </div>
           ) : (
             <div className="detail-page" style={{ animation: 'fadeIn 0.4s ease-out' }}>
-              <div className="banner-blue">
+              <div className="banner-red">
                 <SdmAvatar id_sdm={selectedLecturer.id_sdm} nama={selectedLecturer.nama_sdm} size="lg" />
                 <div className="banner-text">
                   <h1>{getF(selectedLecturer, 'nama_sdm')}</h1>
