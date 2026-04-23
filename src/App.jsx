@@ -6,7 +6,7 @@ import {
   UserCheck, Award, BookOpen, Clock,
   FileText, ShieldCheck, Fingerprint, Globe,
   Link, Download, X, File, Eye, ListChecks,
-  FileBarChart, Newspaper, ExternalLink, Menu, X as CloseIcon
+  FileBarChart, Newspaper, ExternalLink, Menu, X as CloseIcon, HeartHandshake
 } from 'lucide-react';
 import * as sisterApi from './services/api';
 import './App.css';
@@ -39,12 +39,12 @@ const SdmAvatar = ({ id_sdm, nama, size = 'sm' }) => {
   }, [id_sdm, nama]);
 
   return (
-    <div className={size === 'sm' ? 'avatar-sm' : 'avatar-lg'} style={{ 
-      position: 'relative', 
-      overflow: 'hidden', 
-      background: '#f1f5f9', 
-      display: 'flex', 
-      alignItems: 'center', 
+    <div className={size === 'sm' ? 'avatar-sm' : 'avatar-lg'} style={{
+      position: 'relative',
+      overflow: 'hidden',
+      background: '#f1f5f9',
+      display: 'flex',
+      alignItems: 'center',
       justifyContent: 'center',
       borderRadius: size === 'lg' ? '32px' : '50%'
     }}>
@@ -133,9 +133,11 @@ function App() {
       if (tab === 'kepegawaian') res = await sisterApi.getKepegawaian(id_sdm);
       if (tab === 'jafung') res = await sisterApi.getJafung(id_sdm);
       if (tab === 'pendidikan') res = await sisterApi.getEducation(id_sdm);
+      if (tab === 'pengajaran') res = await sisterApi.getPengajaran(id_sdm, selectedSemester);
       if (tab === 'bkd') res = await sisterApi.getBKD(id_sdm, selectedSemester);
       if (tab === 'bkd_laporan') res = await sisterApi.getLaporanAkhirBKD(id_sdm);
       if (tab === 'publikasi') res = await sisterApi.getPublikasi(id_sdm);
+      if (tab === 'pengabdian') res = await sisterApi.getPengabdian(id_sdm);
 
       let finalData = res;
       if (res && res.data && !Array.isArray(res)) finalData = res.data;
@@ -231,6 +233,13 @@ function App() {
       'id_bidang_studi': 'ID Bidang Studi',
       'judul_tugas_akhir': 'Judul Tugas Akhir',
       'tanggal_sk_penyetaraan': 'Tanggal SK Penyetaraan',
+      'mata_kuliah': 'Mata Kuliah',
+      'kelas': 'Kelas',
+      'jumlah_mahasiswa': 'Jumlah Mahasiswa',
+      'sks': 'SKS',
+      'tahun_pelaksanaan': 'Tahun Pelaksanaan',
+      'lama_kegiatan': 'Lama Kegiatan',
+
     };
     return mapping[key] || key;
   };
@@ -290,12 +299,11 @@ function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="guest-layout-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
-        <header className="landing-nav" style={{ 
-          padding: '15px 8%', 
-          backgroundColor: 'rgba(255,255,255,0.95)', 
-          backdropFilter: 'blur(12px)', 
-          borderBottom: '1px solid #f1f5f9',
+      <div className="guest-layout-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'clip' }}>
+        <header className="landing-nav" style={{
+          padding: '12px 5%',
+          backgroundColor: '#ac1234',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
           position: 'sticky',
           top: 0,
           zIndex: 1000,
@@ -303,15 +311,17 @@ function App() {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => setGuestView('landing')}>
-            <SisterLogo style={{ width: '42px', height: '42px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setGuestView('landing')}>
+            <div style={{ background: 'white', borderRadius: '50%', padding: '4px', display: 'flex' }}>
+              <img src="/icon2.png" alt="Icon" style={{ width: '34px', height: '34px', objectFit: 'contain' }} />
+            </div>
             <div style={{ lineHeight: 1 }}>
-              <h1 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.8px' }}>SISTER</h1>
-              <p style={{ fontSize: '0.6rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>STIE PANCASETIA</p>
+              <h1 style={{ fontSize: 'clamp(1rem, 4vw, 1.2rem)', fontWeight: 900, color: 'white', letterSpacing: '-0.5px' }}>SISTER</h1>
+              <p style={{ fontSize: 'clamp(0.5rem, 2vw, 0.6rem)', fontWeight: 800, color: 'white', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '3px' }}>STIE PANCASETIA</p>
             </div>
           </div>
-          <button onClick={() => setGuestView(guestView === 'landing' ? 'login' : 'landing')} className="btn-search" style={{ borderRadius: '12px', padding: '10px 24px', fontSize: '0.85rem' }}>
-            {guestView === 'landing' ? 'Masuk Sekarang' : 'Beranda'}
+          <button onClick={() => setGuestView(guestView === 'landing' ? 'login' : 'landing')} className="btn-search" style={{ borderRadius: '12px', padding: '8px 18px', fontSize: '0.8rem', background: 'white', color: '#ac1234', fontWeight: 800, border: 'none', cursor: 'pointer' }}>
+            {guestView === 'landing' ? 'Masuk' : 'Beranda'}
           </button>
         </header>
 
@@ -319,13 +329,13 @@ function App() {
           {guestView === 'landing' ? (
             <LandingPage setGuestView={setGuestView} />
           ) : (
-            <LoginPage 
-              loginData={loginData} 
-              setLoginData={setLoginData} 
-              handleLogin={handleLogin} 
-              loading={loading} 
-              error={error} 
-              setError={setError} 
+            <LoginPage
+              loginData={loginData}
+              setLoginData={setLoginData}
+              handleLogin={handleLogin}
+              loading={loading}
+              error={error}
+              setError={setError}
             />
           )}
         </main>
@@ -334,7 +344,7 @@ function App() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '40px', marginBottom: '60px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <SisterLogo style={{ width: '48px', height: '48px' }} />
+                <img src="/icon2.png" alt="Icon" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
                 <div>
                   <h3 style={{ fontWeight: 900, fontSize: '1.5rem', color: '#ac1234', letterSpacing: '-1px' }}>SISTER</h3>
                   <p style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>STIE PANCASETIA</p>
@@ -342,9 +352,9 @@ function App() {
               </div>
               <p style={{ opacity: 0.8, fontSize: '0.9rem', lineHeight: 1.6, maxWidth: '300px' }}>Sistem Informasi Sumberdaya Terintegrasi untuk pengelolaan data dosen dan tenaga kependidikan STIE Pancasetia.</p>
               <div style={{ display: 'flex', gap: '12px' }}>
-                 {/* Social placeholders similar to SIPERU */}
-                 <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ac1234' }}><Globe size={18} /></div>
-                 <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ac1234' }}><Link size={18} /></div>
+                {/* Social placeholders similar to SIPERU */}
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ac1234' }}><Globe size={18} /></div>
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ac1234' }}><Link size={18} /></div>
               </div>
             </div>
 
@@ -359,7 +369,7 @@ function App() {
             </div>
           </div>
           <div style={{ borderTop: '1.5px solid #f1f5f9', paddingTop: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
-            <p style={{ fontWeight: 800, fontSize: '0.85rem', color: '#94a3b8' }}>© {new Date().getFullYear()} <span style={{ color: '#ac1234' }}>IT STIE PANCASETIA</span>. All Rights Reserved.</p>
+            <p style={{ fontWeight: 800, fontSize: '0.85rem', color: '#ac1234' }}>© {new Date().getFullYear()} IT STIE PANCASETIA. All Rights Reserved.</p>
             <div style={{ display: 'flex', gap: '20px' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>Privacy Policy</span>
               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>Terms of Service</span>
@@ -377,8 +387,8 @@ function App() {
           <button className="mobile-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             {isSidebarOpen ? <CloseIcon size={24} /> : <Menu size={24} />}
           </button>
-          <SisterLogo className="logo-sister" style={{ width: '38px', height: '38px', cursor: 'pointer' }} />
-          <div className="navbar-title"><h2>SISTER</h2><span>| STIE PANCASETIA</span></div>
+          <img src="/icon2.png" alt="Icon" className="logo-sister" style={{ width: '38px', height: '38px', cursor: 'pointer', objectFit: 'contain' }} />
+          <div className="navbar-title"><h2>SISTER STIE PANCASETIA</h2></div>
         </div>
         <button className="btn-logout-alt" onClick={() => {
           localStorage.removeItem('sister_token');
@@ -401,6 +411,7 @@ function App() {
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'kepegawaian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('kepegawaian'), setIsSidebarOpen(false))}><UserCheck size={20} /> <span>Kepegawaian</span></div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'jafung' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('jafung'), setIsSidebarOpen(false))}><Award size={20} /> <span>Jabatan Fungsional</span></div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pendidikan' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pendidikan'), setIsSidebarOpen(false))}><BookOpen size={20} /> <span>Pendidikan Formal</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pengajaran' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pengajaran'), setIsSidebarOpen(false))}><GraduationCap size={20} /> <span>Pengajaran</span></div>
 
             <div className="menu-label">BEBAN KERJA (BKD)</div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'bkd' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('bkd'), setIsSidebarOpen(false))}><ListChecks size={20} /> <span>BKD Pengajaran</span></div>
@@ -408,6 +419,9 @@ function App() {
 
             <div className="menu-label">PUBLIKASI</div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'publikasi' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('publikasi'), setIsSidebarOpen(false))}><Newspaper size={20} /> <span>Publikasi Ilmiah</span></div>
+
+            <div className="menu-label">PENGABDIAN</div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pengabdian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pengabdian'), setIsSidebarOpen(false))}><HeartHandshake size={20} /> <span>Pengabdian Masyarakat</span></div>
           </div>
         </aside>
 
@@ -449,12 +463,14 @@ function App() {
                   {activeTab === 'kepegawaian' && <><UserCheck size={22} /> DATA KEPEGAWAIAN LENGKAP</>}
                   {activeTab === 'jafung' && <><Award size={22} /> RIWAYAT JABATAN FUNGSIONAL</>}
                   {activeTab === 'pendidikan' && <><BookOpen size={22} /> RIWAYAT PENDIDIKAN FORMAL</>}
+                  {activeTab === 'pengajaran' && <><GraduationCap size={22} /> DATA PENGAJARAN (Sem: {selectedSemester})</>}
                   {activeTab === 'bkd' && <><ListChecks size={22} /> BKD PENGAJARAN (Sem: {selectedSemester})</>}
                   {activeTab === 'bkd_laporan' && <><FileBarChart size={22} /> LAPORAN AKHIR BKD</>}
                   {activeTab === 'publikasi' && <><Newspaper size={22} /> DAFTAR PUBLIKASI ILMIAH</>}
+                  {activeTab === 'pengabdian' && <><ShieldCheck size={22} /> DAFTAR PENGABDIAN MASYARAKAT</>}
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    {activeTab === 'bkd' && (
+                    {(activeTab === 'bkd' || activeTab === 'pengajaran') && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '0.75rem', fontWeight: 800 }}>SEMESTER:</span><input type="text" value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} style={{ width: '90px', padding: '6px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700 }} /></div>
                     )}
                     <button className="btn-detail-row" onClick={handleExportExcel} style={{ background: '#166534', color: 'white', borderColor: '#166534' }}>
@@ -505,6 +521,33 @@ function App() {
                                 <td><strong>{getF(edu, 'nama_perguruan_tinggi')}</strong></td>
                                 <td>{getF(edu, 'tahun_lulus')}</td>
                                 <td style={{ textAlign: 'center' }}><button className="btn-detail-row" onClick={() => openEduDetail(edu.id)}><Eye size={16} style={{ marginRight: '6px' }} /> Detail</button></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {activeTab === 'pengajaran' && (
+                        <table className="info-table">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Semester</th>
+                              <th>Mata Kuliah</th>
+                              <th>Kelas</th>
+                              <th style={{ textAlign: 'center' }}>Jumlah Mhs</th>
+                              <th style={{ textAlign: 'center' }}>SKS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(Array.isArray(tabData) ? tabData : []).map((p, i) => (
+                              <tr key={i}>
+                                <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#94a3b8' }}>{getF(p, 'id')}</td>
+                                <td>{getF(p, 'semester')}</td>
+                                <td><strong>{getF(p, 'mata_kuliah')}</strong></td>
+                                <td>{getF(p, 'kelas')}</td>
+                                <td style={{ textAlign: 'center' }}>{getF(p, 'jumlah_mahasiswa')}</td>
+                                <td style={{ textAlign: 'center' }}><strong>{getF(p, 'sks')}</strong></td>
                               </tr>
                             ))}
                           </tbody>
@@ -619,6 +662,29 @@ function App() {
                           </tbody>
                         </table>
                       )}
+
+                      {activeTab === 'pengabdian' && (
+                        <table className="info-table">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Judul Pengabdian</th>
+                              <th style={{ textAlign: 'center' }}>Tahun</th>
+                              <th style={{ textAlign: 'center' }}>Lama (Tahun)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(Array.isArray(tabData) ? tabData : []).map((p, i) => (
+                              <tr key={i}>
+                                <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#94a3b8' }}>{getF(p, 'id')}</td>
+                                <td><strong>{getF(p, 'judul')}</strong></td>
+                                <td style={{ textAlign: 'center' }}>{getF(p, 'tahun_pelaksanaan')}</td>
+                                <td style={{ textAlign: 'center' }}>{getF(p, 'lama_kegiatan')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
                     </div>
                   ) : <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Informasi tidak tersedia di server.</p>}
                 </div>
@@ -633,7 +699,7 @@ function App() {
         <div className="modal-overlay">
           <div className="modal-card">
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}><SisterLogo style={{ width: '36px', height: '36px' }} /><h2>Detail Riwayat Pendidikan Full</h2></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}><img src="/icon2.png" alt="Icon" style={{ width: '36px', height: '36px', objectFit: 'contain' }} /><h2>Detail Riwayat Pendidikan Full</h2></div>
               <button className="close-btn" onClick={() => (setEduDetail(null), setLoadingEdu(false))}><X size={20} /></button>
             </div>
             <div className="modal-body">

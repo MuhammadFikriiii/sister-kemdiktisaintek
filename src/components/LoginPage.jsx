@@ -31,12 +31,10 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
         animation: 'scaleIn 0.3s ease-out'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '35px' }}>
-          <div style={{ background: '#f8fafc', width: '80px', height: '80px', borderRadius: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' }}>
-            <SisterLogo style={{ width: '56px', height: '56px' }} />
+          <div style={{ background: '#fff1f2', padding: '16px', borderRadius: '24px', display: 'inline-block', marginBottom: '24px' }}>
+            <img src="/icon2.png" alt="Icon" style={{ width: '56px', height: '56px', objectFit: 'contain' }} />
           </div>
           <h2 style={{ fontSize: 'clamp(1.5rem, 5vw, 1.8rem)', fontWeight: 900, color: '#ac1234', letterSpacing: '-1.2px' }}>SISTER LOGIN</h2>
-          <div style={{ height: '3px', width: '40px', background: '#eab308', margin: '15px auto' }}></div>
-          <p style={{ color: '#64748b', fontWeight: 600, fontSize: '0.9rem' }}>Akses Dashboard Integrasi Data</p>
         </div>
 
         {error && (

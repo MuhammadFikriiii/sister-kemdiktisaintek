@@ -1,0 +1,87 @@
+DOKUMENTASI CARA MENAMBAHKAN ENDPOINT / FITUR BARU DI APLIKASI SISTER
+
+Jika suatu saat ingin menambahkan fitur atau endpoint baru sendiri (seperti yang kita lakukan pada fitur "Pengajaran"), berikut adalah panduan langkah demi langkah bagian mana saja yang perlu diedit:
+
+====================================================================
+LANGKAH 1: Tambahkan Endpoint API di "src/services/api.js"
+====================================================================
+Buka file `src/services/api.js` dan buat satu fungsi export baru untuk memanggil endpoint API yang baru.
+Contoh:
+export const getFiturBaru = async (id_sdm, parameter_lain) => {
+  const response = await api.get(`/endpoint_baru_dari_dokumentasi`, {
+    params: { id_sdm, parameter_lain }
+  });
+  return response.data;
+};
+
+
+====================================================================
+LANGKAH 2: Tambahkan Menu Baru di Sidebar "src/App.jsx"
+====================================================================
+Cari bagian menu sidebar (sekitar baris yang banyak div dengan className="nav-item").
+Tambahkan tab baru dan tentukan `activeTab` miliknya, misal kita sebut "fitur_baru":
+
+<div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'fitur_baru' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('fitur_baru'), setIsSidebarOpen(false))}>
+  <IconName size={20} /> <span>Nama Fitur Baru</span>
+</div>
+
+
+====================================================================
+LANGKAH 3: Panggil API-nya di fungsi fetchTabData "src/App.jsx"
+====================================================================
+Cari fungsi bernama `fetchTabData` di dalam `App.jsx`. Fungsi ini gunanya untuk mengeksekusi API sesuai dengan tab yang sedang aktif. Tambahkan satu baris kondisi `if` baru:
+
+if (tab === 'fitur_baru') res = await sisterApi.getFiturBaru(id_sdm, selectedSemester);
+
+
+====================================================================
+LANGKAH 4: Tambahkan Header & Fitur Ekstra (Seperti Input Semester) "src/App.jsx"
+====================================================================
+Cari bagian `profile-card-header` di dalam kode.
+1. Tambahkan Judul Header:
+{activeTab === 'fitur_baru' && <><IconName size={22} /> JUDUL HALAMAN FITUR BARU</>}
+
+2. Jika fitur tersebut butuh filter semester, edit bagian input semesternya:
+Ubah yang awalnya:
+{(activeTab === 'bkd' || activeTab === 'pengajaran') && (
+
+Menjadi:
+{(activeTab === 'bkd' || activeTab === 'pengajaran' || activeTab === 'fitur_baru') && (
+
+
+====================================================================
+LANGKAH 5: Buat Tabel HTML untuk Menampilkan Data "src/App.jsx"
+====================================================================
+Cari bagian `<div className="table-wrapper">`. Di sinilah semua tabel di render.
+Tambahkan blok tabel baru menggunakan `activeTab === 'fitur_baru'`:
+
+{activeTab === 'fitur_baru' && (
+  <table className="info-table">
+    <thead>
+      <tr>
+        <th>Kolom 1</th>
+        <th>Kolom 2</th>
+      </tr>
+    </thead>
+    <tbody>
+      {(Array.isArray(tabData) ? tabData : []).map((data, i) => (
+        <tr key={i}>
+          <td>{getF(data, 'kunci_json_1')}</td>
+          <td>{getF(data, 'kunci_json_2')}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+)}
+
+
+====================================================================
+LANGKAH 6: (Opsional) Mapping Nama Kolom Untuk Export Excel "src/App.jsx"
+====================================================================
+Cari fungsi `formatKey` di dalam `App.jsx`.
+Di dalam objek `mapping`, tambahkan nama JSON dari API beserta nama kolom cantik yang ingin dimunculkan jika data di export ke file Excel (.xlsx).
+
+'kunci_json_1': 'Nama Kolom 1',
+'kunci_json_2': 'Nama Kolom 2',
+
+Selesai! Dengan mengikuti 6 langkah ini, aplikasi kamu akan bisa mengakses dan menampilkan menu/fitur baru dari SISTER.

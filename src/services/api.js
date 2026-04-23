@@ -18,7 +18,7 @@ api.interceptors.request.use((config) => {
 export const login = async (credentials) => {
   try {
     const response = await api.post('/authorize', credentials);
-    const token = response.data.token || response.data.kode_barrel; 
+    const token = response.data.token || response.data.kode_barrel;
     if (token) {
       authToken = token;
       localStorage.setItem('sister_token', token);
@@ -64,6 +64,23 @@ export const getEducationDetail = async (id) => {
 export const getBKD = async (id_sdm, id_smt) => {
   const response = await api.get(`/bkd/ajar`, {
     params: { id_sdm, id_smt }
+  });
+  return response.data;
+};
+
+export const getPengajaran = async (id_sdm, id_semester) => {
+  const response = await api.get(`/pengajaran`, {
+    params: { id_sdm, id_semester }
+  });
+  return response.data;
+};
+
+export const getPengabdian = async (id_sdm) => {
+  const response = await api.get(`/pengabdian`, {
+    params: {
+      id_sdm
+      , per_page: 100, page: 1
+    }
   });
   return response.data;
 };
