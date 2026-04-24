@@ -69,7 +69,7 @@ function App() {
   const [selectedSemester, setSelectedSemester] = useState('20241');
   const [eduDetail, setEduDetail] = useState(null);
   const [loadingEdu, setLoadingEdu] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
 
   // States for Jafung Kampus
   const [campusJafungData, setCampusJafungData] = useState(null);
@@ -136,6 +136,15 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('sister_token');
+    setSearchResults([]);
+    setSelectedLecturer(null);
+    setTabData(null);
+    setSearchQuery('');
+    setIsLoggedIn(false);
   };
 
   const handleSearch = async (e) => {
@@ -580,49 +589,43 @@ function App() {
       <nav className="navbar">
         <div className="navbar-left">
           <button className="mobile-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            {isSidebarOpen ? <CloseIcon size={24} /> : <Menu size={24} />}
+            <Menu size={24} />
           </button>
           <img src="/icon2.png" alt="Icon" className="logo-sister" style={{ width: '38px', height: '38px', cursor: 'pointer', objectFit: 'contain' }} />
           <div className="navbar-title"><h2>SISTER STIE PANCASETIA</h2></div>
         </div>
-        <button className="btn-logout-alt" onClick={() => {
-          localStorage.removeItem('sister_token');
-          setSearchResults([]);
-          setSelectedLecturer(null);
-          setTabData(null);
-          setSearchQuery('');
-          setIsLoggedIn(false);
-        }}>
+        <button className="btn-logout-alt" onClick={handleLogout}>
           <LogOut size={16} /> <span className="hide-mobile">Keluar</span>
         </button>
       </nav>
 
       <div className="main-layout">
         <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)}></div>
-        <aside className={`sidebar ${isSidebarOpen ? 'mobile-open' : ''}`}>
+        
+        <aside className={`sidebar ${isSidebarOpen ? 'mobile-open' : 'collapsed'}`}>
           <div className="sidebar-content">
-            <div className={`nav-item ${currentView === 'search' ? 'active' : ''}`} onClick={() => { setCurrentView('search'); setIsSidebarOpen(false); }}><LayoutDashboard size={20} /> <span>Beranda</span></div>
+            <div className={`nav-item ${currentView === 'search' ? 'active' : ''}`} onClick={() => { setCurrentView('search'); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}><LayoutDashboard size={20} /> <span>Beranda</span></div>
             
             <div className="menu-label">FITUR GLOBAL</div>
-            <div className={`nav-item ${currentView === 'campus_jafung' ? 'active' : ''}`} onClick={fetchCampusJafung}>
+            <div className={`nav-item ${currentView === 'campus_jafung' ? 'active' : ''}`} onClick={() => { fetchCampusJafung(); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}>
               <Database size={20} /> <span>Jafung Kampus</span>
             </div>
 
             <div className="menu-label">PENARIKAN DATA</div>
-            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'kepegawaian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('kepegawaian'), setIsSidebarOpen(false))}><UserCheck size={20} /> <span>Kepegawaian</span></div>
-            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'jafung' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('jafung'), setIsSidebarOpen(false))}><Award size={20} /> <span>Jabatan Fungsional</span></div>
-            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pendidikan' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pendidikan'), setIsSidebarOpen(false))}><BookOpen size={20} /> <span>Pendidikan Formal</span></div>
-            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pengajaran' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pengajaran'), setIsSidebarOpen(false))}><GraduationCap size={20} /> <span>Pengajaran</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'kepegawaian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('kepegawaian'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><UserCheck size={20} /> <span>Kepegawaian</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'jafung' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('jafung'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><Award size={20} /> <span>Jabatan Fungsional</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pendidikan' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pendidikan'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><BookOpen size={20} /> <span>Pendidikan Formal</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pengajaran' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pengajaran'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><GraduationCap size={20} /> <span>Pengajaran</span></div>
 
             <div className="menu-label">BEBAN KERJA (BKD)</div>
-            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'bkd' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('bkd'), setIsSidebarOpen(false))}><ListChecks size={20} /> <span>BKD Pengajaran</span></div>
-            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'bkd_laporan' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('bkd_laporan'), setIsSidebarOpen(false))}><FileBarChart size={20} /> <span>Laporan Akhir BKD</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'bkd' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('bkd'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><ListChecks size={20} /> <span>BKD Pengajaran</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'bkd_laporan' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('bkd_laporan'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><FileBarChart size={20} /> <span>Laporan Akhir BKD</span></div>
 
             <div className="menu-label">PUBLIKASI</div>
-            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'publikasi' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('publikasi'), setIsSidebarOpen(false))}><Newspaper size={20} /> <span>Publikasi Ilmiah</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'publikasi' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('publikasi'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><Newspaper size={20} /> <span>Publikasi Ilmiah</span></div>
 
             <div className="menu-label">PENGABDIAN</div>
-            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pengabdian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pengabdian'), setIsSidebarOpen(false))}><HeartHandshake size={20} /> <span>Pengabdian Masyarakat</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pengabdian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pengabdian'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><HeartHandshake size={20} /> <span>Pengabdian Masyarakat</span></div>
           </div>
         </aside>
 
