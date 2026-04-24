@@ -289,9 +289,8 @@ body {
 .welcome-card p {
   font-size: clamp(1rem, 4vw, 1.25rem);
   max-width: 650px;
-  color: white;
-  /* Pure white as requested */
-  opacity: 1;
+  color: #ffffff !important; /* Pure white solid */
+  opacity: 1 !important;
   line-height: 1.6;
   margin-bottom: 48px;
   animation: slideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
