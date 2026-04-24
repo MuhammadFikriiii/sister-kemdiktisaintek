@@ -602,8 +602,8 @@ function App() {
                                 <td>{getF(b, 'id_smt')}</td>
                                 <td>{getF(b, 'unsur')}</td>
                                 <td><strong style={{ fontSize: '0.85rem' }}>{getF(b, 'judul_keg')}</strong></td>
-                                <td style={{ textAlign: 'center' }}><strong>{getF(b, 'beban_sks')}</strong></td>
-                                <td style={{ textAlign: 'center' }}><strong>{getF(b, 'nilai')}</strong></td>
+                                <td style={{ textAlign: 'center' }}><strong>{Number(getF(b, 'beban_sks')).toFixed(2)}</strong></td>
+                                <td style={{ textAlign: 'center' }}><strong>{Number(getF(b, 'nilai')).toFixed(2)}</strong></td>
                               </tr>
                             ))}
                           </tbody>

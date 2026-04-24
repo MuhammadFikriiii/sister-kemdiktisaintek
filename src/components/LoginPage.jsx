@@ -51,6 +51,7 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
               type="text"
               value={loginData.username}
               onChange={e => { setLoginData({ ...loginData, username: e.target.value }); setError(null); }}
+              autoComplete='username'
               style={{ width: '100%', background: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px', fontWeight: 700, fontSize: '1rem', outline: 'none' }}
               placeholder="Username SISTER"
               required
@@ -62,6 +63,7 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
               type="password"
               value={loginData.password}
               onChange={e => { setLoginData({ ...loginData, password: e.target.value }); setError(null); }}
+              autoComplete='current-password'
               style={{ width: '100%', background: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px', fontWeight: 700, fontSize: '1rem', outline: 'none' }}
               placeholder="••••••••"
               required
