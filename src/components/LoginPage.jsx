@@ -67,17 +67,7 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
               required
             />
           </div>
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontWeight: 800, fontSize: '0.7rem', color: '#ac1234', letterSpacing: '0.5px', marginBottom: '8px', textTransform: 'uppercase' }}>ID Pengguna (UUID)</label>
-            <input
-              type="text"
-              value={loginData.id_pengguna}
-              onChange={e => { setLoginData({ ...loginData, id_pengguna: e.target.value }); setError(null); }}
-              style={{ width: '100%', background: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px', fontWeight: 700, fontSize: '0.85rem', outline: 'none' }}
-              placeholder="Contoh: a1b2c3d4-..."
-              required
-            />
-          </div>
+
           <button type="submit" disabled={loading} className="btn-search" style={{ width: '100%', padding: '18px', borderRadius: '16px', fontSize: '1rem', fontWeight: 800, letterSpacing: '1px', background: loading ? '#94a3b8' : '#ac1234', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
             {loading ? <><Loader2 className="animate-spin" size={20} /> MEMVERIFIKASI...</> : "MASUK SEKARANG"}
           </button>

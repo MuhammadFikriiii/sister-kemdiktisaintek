@@ -93,10 +93,37 @@ function App() {
     setError(null);
     setLoading(true);
     try {
-      if (!loginData.username || !loginData.password || !loginData.id_pengguna) {
-        throw new Error("Harap isi semua bidang input.");
+      if (!loginData.username || !loginData.password) {
+        throw new Error("Harap isi username dan password.");
       }
-      await sisterApi.login(loginData);
+
+      let actualCredentials = null;
+      const customUsersStr = import.meta.env.VITE_CUSTOM_USERS;
+
+      if (customUsersStr) {
+        try {
+          const customUsers = JSON.parse(customUsersStr);
+          const matchedUser = customUsers.find(
+            u => u.username === loginData.username && u.password === loginData.password
+          );
+
+          if (matchedUser) {
+            actualCredentials = {
+              username: import.meta.env.VITE_SISTER_USERNAME,
+              password: import.meta.env.VITE_SISTER_PASSWORD,
+              id_pengguna: import.meta.env.VITE_SISTER_ID_PENGGUNA
+            };
+          }
+        } catch (e) {
+          console.error("Gagal mem-parsing VITE_CUSTOM_USERS", e);
+        }
+      }
+
+      if (!actualCredentials) {
+        throw new Error("Username atau password salah.");
+      }
+
+      await sisterApi.login(actualCredentials);
       setIsLoggedIn(true);
     } catch (err) {
       // Production ready: Only show friendly message, no technical logs
