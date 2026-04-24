@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import * as sisterApi from './services/api';
 import './App.css';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 
 // Modular Components
 import SisterLogo from './components/SisterLogo';
@@ -436,6 +436,32 @@ function App() {
       
       if (merges.length > 0) {
         ws['!merges'] = merges;
+      }
+
+      // Apply Styles (Borders, Alignment, Font)
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell_ref = XLSX.utils.encode_cell({ c: C, r: R });
+          if (!ws[cell_ref]) continue;
+          
+          ws[cell_ref].s = {
+            alignment: { vertical: 'center', horizontal: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin', color: { rgb: "000000" } },
+              bottom: { style: 'thin', color: { rgb: "000000" } },
+              left: { style: 'thin', color: { rgb: "000000" } },
+              right: { style: 'thin', color: { rgb: "000000" } }
+            },
+            font: { name: 'Arial', sz: 10 }
+          };
+
+          // Header Styling
+          if (R === 0) {
+            ws[cell_ref].s.fill = { fgColor: { rgb: "E2E8F0" } };
+            ws[cell_ref].s.font = { bold: true, name: 'Arial', sz: 10 };
+          }
+        }
       }
 
       if (exportRows.length > 0) {
