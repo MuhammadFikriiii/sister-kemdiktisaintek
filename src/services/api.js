@@ -37,6 +37,14 @@ export const searchSDM = async (nama, id_sp = '') => {
   return response.data;
 };
 
+// New: Get all SDM in a campus without name filter
+export const getCampusSDM = async (id_sp, nama = '%%%') => {
+  const response = await api.get(`/referensi/sdm`, {
+    params: { id_sp, nama, per_page: 1000 }
+  });
+  return response.data;
+};
+
 export const getKepegawaian = async (id_sdm) => {
   const response = await api.get(`/data_pribadi/kepegawaian/${id_sdm}`);
   return response.data;

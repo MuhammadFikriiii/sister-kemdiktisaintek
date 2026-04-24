@@ -71,6 +71,11 @@ function App() {
   const [loadingEdu, setLoadingEdu] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // States for Jafung Kampus
+  const [campusJafungData, setCampusJafungData] = useState(null);
+  const [campusProgress, setCampusProgress] = useState(0);
+  const [isCampusLoading, setIsCampusLoading] = useState(false);
+
   const [loginData, setLoginData] = useState({
     username: "",
     password: "",
@@ -180,6 +185,100 @@ function App() {
     }
   };
 
+  const fetchCampusJafung = async () => {
+    if (isCampusLoading) return;
+    setIsCampusLoading(true);
+    setCampusProgress(0);
+    setCampusJafungData(null);
+    setCurrentView('campus_jafung');
+    setIsSidebarOpen(false);
+    setError(null);
+
+    try {
+      // Strategy: Broad Coverage Fragment Search
+      // We use fragments that are extremely common in Indonesian names and titles
+      const fragments = [
+        'abd', 'ahm', 'adi', 'agu', 'aka', 'ala', 'ama', 'ana', 'and', 'ang', 'ani', 'ans', 'ant', 'ara', 'ari', 'arm', 'art', 'ary', 'asa', 'ase', 'asi', 'asm', 'asr', 'ast', 'ati', 'awa', 'ayu', 'bag', 'bah', 'bam', 'bas', 'bud', 'car', 'cha', 'dah', 'dam', 'dan', 'dar', 'ded', 'den', 'der', 'dew', 'dha', 'dia', 'dik', 'din', 'dwi', 'edy', 'eka', 'eko', 'end', 'eny', 'era', 'eri', 'ern', 'est', 'eva', 'fad', 'faj', 'far', 'fat', 'fau', 'feb', 'fer', 'fit', 'gha', 'gun', 'gus', 'had', 'haf', 'hak', 'hal', 'ham', 'han', 'har', 'has', 'hel', 'hen', 'her', 'hid', 'him', 'hus', 'iam', 'ich', 'ida', 'ifr', 'ikh', 'ila', 'ima', 'ina', 'ind', 'ira', 'irm', 'ism', 'ist', 'ita', 'iva', 'iza', 'jaz', 'joh', 'jum', 'jus', 'kar', 'kas', 'kho', 'kri', 'kun', 'kur', 'kus', 'lan', 'lar', 'lat', 'len', 'les', 'lia', 'lif', 'lil', 'lim', 'lin', 'lis', 'lum', 'lus', 'lut', 'maa', 'mad', 'mag', 'mah', 'mai', 'mal', 'mam', 'man', 'mar', 'mas', 'mat', 'mau', 'may', 'meg', 'mei', 'mel', 'met', 'mif', 'moh', 'muh', 'mul', 'mun', 'mur', 'mus', 'mut', 'nad', 'naf', 'nan', 'nar', 'nas', 'nat', 'nav', 'naz', 'nen', 'nia', 'nik', 'nil', 'nin', 'nir', 'nis', 'nit', 'nov', 'nur', 'oct', 'ona', 'ovi', 'pam', 'pan', 'par', 'per', 'pra', 'pri', 'puj', 'pur', 'pus', 'put', 'qod', 'rad', 'rah', 'rai', 'raj', 'rak', 'ram', 'ran', 'rar', 'rat', 'ray', 'ren', 'res', 'ret', 'rez', 'ria', 'rid', 'rif', 'rik', 'rin', 'ris', 'riz', 'rob', 'roc', 'roh', 'roj', 'rom', 'ron', 'ros', 'roy', 'rud', 'rum', 'rus', 'sab', 'sad', 'saf', 'sah', 'sai', 'sak', 'sal', 'sam', 'san', 'sap', 'sar', 'sas', 'sat', 'say', 'sel', 'sep', 'set', 'sha', 'shf', 'sho', 'sia', 'sid', 'sif', 'sig', 'sil', 'sim', 'sin', 'sir', 'sit', 'sla', 'sof', 'son', 'sri', 'sub', 'sud', 'sug', 'suh', 'suk', 'sul', 'sum', 'sun', 'sup', 'sur', 'sus', 'sut', 'suw', 'sya', 'syah', 'syar', 'syih', 'syuk', 'tah', 'tam', 'tan', 'tar', 'tau', 'ted', 'ten', 'ter', 'tet', 'tit', 'tri', 'tut', 'umi', 'uta', 'uti', 'ver', 'vic', 'vid', 'vir', 'vit', 'wah', 'wal', 'wan', 'war', 'wat', 'wen', 'wia', 'wid', 'wig', 'wik', 'win', 'wir', 'wis', 'wiw', 'wiy', 'yan', 'yar', 'yas', 'yat', 'yef', 'yen', 'yoh', 'yos', 'yud', 'yul', 'yun', 'yur', 'yus', 'zai', 'zak', 'zul', 'sti', 'pan', 'cas', 'eti'
+      ];
+      let allLecturersMap = new Map();
+
+      for (let f = 0; f < fragments.length; f++) {
+        const fragment = fragments[f];
+        setCampusProgress(Math.round(((f + 1) / fragments.length) * 20));
+
+        try {
+          const sdmRes = await sisterApi.getCampusSDM(DEFAULT_ID_SP, fragment);
+          const chunk = Array.isArray(sdmRes) ? sdmRes : (sdmRes.data || []);
+          chunk.forEach(l => {
+            if (l.id_sdm) allLecturersMap.set(l.id_sdm, l);
+          });
+        } catch (e) {
+          console.error(`Fragment ${fragment} failed`);
+        }
+      }
+
+      const lecturers = Array.from(allLecturersMap.values());
+
+      if (lecturers.length === 0) {
+        throw new Error("Tidak ada data dosen ditemukan. Coba lagi nanti.");
+      }
+
+      let aggregatedData = [];
+      for (let i = 0; i < lecturers.length; i++) {
+        const sdm = lecturers[i];
+        setCampusProgress(20 + Math.round(((i + 1) / lecturers.length) * 80));
+
+        try {
+          const res = await sisterApi.getJafung(sdm.id_sdm);
+          const jafungRecords = Array.isArray(res) ? res : (res.data || []);
+
+          if (jafungRecords.length > 0) {
+            jafungRecords.forEach(j => {
+              aggregatedData.push({
+                ...j,
+                nama_sdm: sdm.nama_sdm,
+                nidn: sdm.nidn
+              });
+            });
+          }
+          // Note: Lecturers with no jafung records are now omitted as requested
+        } catch (e) {
+          console.error(`Failed to fetch jafung for ${sdm.nama_sdm}`);
+        }
+      }
+
+      setCampusJafungData(aggregatedData);
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || "Gagal memuat data Jafung Kampus.";
+      setError(msg);
+    } finally {
+      setIsCampusLoading(false);
+    }
+  };
+
+  // Helper to group records by lecturer for rowSpan
+  const getGroupedCampusData = () => {
+    if (!campusJafungData) return [];
+    
+    const groups = [];
+    let currentGroup = null;
+
+    campusJafungData.forEach(item => {
+      if (!currentGroup || currentGroup.nidn !== item.nidn) {
+        currentGroup = {
+          nama_sdm: item.nama_sdm,
+          nidn: item.nidn,
+          records: [item]
+        };
+        groups.push(currentGroup);
+      } else {
+        currentGroup.records.push(item);
+      }
+    });
+
+    return groups;
+  };
+
   const openEduDetail = async (id) => {
     setLoadingEdu(true);
     setEduDetail(null);
@@ -274,14 +373,48 @@ function App() {
   const getF = (obj, key) => (obj && obj[key] !== undefined && obj[key] !== null ? String(obj[key]) : '-');
 
   const handleExportExcel = () => {
-    if (!tabData) return;
+    const isGlobal = currentView === 'campus_jafung';
+    const targetData = isGlobal ? campusJafungData : tabData;
+    
+    if (!targetData) return;
 
     try {
       const wb = XLSX.utils.book_new();
       let exportRows = [];
-      let sheetName = activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
+      let sheetName = "";
 
-      if (activeTab === 'kepegawaian') {
+      let merges = [];
+
+      if (currentView === 'campus_jafung') {
+        const groupedData = getGroupedCampusData();
+        let currentRow = 1; // Start after header
+
+        groupedData.forEach((group, idx) => {
+          const rowCount = group.records.length;
+          
+          // Add merge records for columns: No (0), Nama (1), NIDN (2)
+          if (rowCount > 1) {
+            merges.push(
+              { s: { r: currentRow, c: 0 }, e: { r: currentRow + rowCount - 1, c: 0 } }, // No
+              { s: { r: currentRow, c: 1 }, e: { r: currentRow + rowCount - 1, c: 1 } }, // Nama
+              { s: { r: currentRow, c: 2 }, e: { r: currentRow + rowCount - 1, c: 2 } }  // NIDN
+            );
+          }
+
+          group.records.forEach(record => {
+            exportRows.push({
+              'No': idx + 1,
+              'Nama Dosen': group.nama_sdm,
+              'NIDN': group.nidn,
+              'Jabatan Fungsional': record.jabatan_fungsional,
+              'Nomor SK': record.sk || '-',
+              'TMT Jabatan': record.tanggal_mulai || '-'
+            });
+            currentRow++;
+          });
+        });
+        sheetName = "Jafung_Kampus_Global";
+      } else if (activeTab === 'kepegawaian') {
         const row = {};
         Object.keys(tabData).forEach(k => {
           row[formatKey(k)] = getF(tabData, k);
@@ -296,9 +429,14 @@ function App() {
           });
           return row;
         });
+        sheetName = activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
       }
 
       const ws = XLSX.utils.json_to_sheet(exportRows);
+      
+      if (merges.length > 0) {
+        ws['!merges'] = merges;
+      }
 
       if (exportRows.length > 0) {
         const colsWidth = [];
@@ -317,7 +455,11 @@ function App() {
       }
 
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
-      XLSX.writeFile(wb, `SISTER_${activeTab}_${selectedLecturer.nama_sdm.replace(/\s+/g, '_')}.xlsx`);
+      const fileName = currentView === 'campus_jafung' 
+        ? `SISTER_JAFUNG_KAMPUS_ALL_${new Date().toISOString().split('T')[0]}.xlsx`
+        : `SISTER_${activeTab}_${selectedLecturer.nama_sdm.replace(/\s+/g, '_')}.xlsx`;
+        
+      XLSX.writeFile(wb, fileName);
     } catch (err) {
       alert("Gagal melakukan export Excel.");
     }
@@ -434,6 +576,12 @@ function App() {
         <aside className={`sidebar ${isSidebarOpen ? 'mobile-open' : ''}`}>
           <div className="sidebar-content">
             <div className={`nav-item ${currentView === 'search' ? 'active' : ''}`} onClick={() => { setCurrentView('search'); setIsSidebarOpen(false); }}><LayoutDashboard size={20} /> <span>Beranda</span></div>
+            
+            <div className="menu-label">FITUR GLOBAL</div>
+            <div className={`nav-item ${currentView === 'campus_jafung' ? 'active' : ''}`} onClick={fetchCampusJafung}>
+              <Database size={20} /> <span>Jafung Kampus</span>
+            </div>
+
             <div className="menu-label">PENARIKAN DATA</div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'kepegawaian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('kepegawaian'), setIsSidebarOpen(false))}><UserCheck size={20} /> <span>Kepegawaian</span></div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'jafung' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('jafung'), setIsSidebarOpen(false))}><Award size={20} /> <span>Jabatan Fungsional</span></div>
@@ -473,6 +621,109 @@ function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          ) : currentView === 'campus_jafung' ? (
+            <div className="detail-page" style={{ animation: 'fadeIn 0.4s ease-out' }}>
+              <div className="banner-blue">
+                <Database size={48} />
+                <div className="banner-text">
+                  <h1>Data Jabatan Fungsional Kampus</h1>
+                  <p style={{ opacity: 0.9, fontSize: '1rem', fontWeight: 600 }}>Menampilkan seluruh riwayat jafung dosen STIE Pancasetia secara kolektif.</p>
+                </div>
+              </div>
+
+              <div className="profile-card">
+                <div className="profile-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Database size={22} /> REKAPITULASI JAFUNG SELURUH DOSEN
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {campusJafungData && (
+                      <button className="btn-detail-row" onClick={handleExportExcel} style={{ background: '#166534', color: 'white', borderColor: '#166534' }}>
+                        <FileText size={16} style={{ marginRight: '6px' }} /> Export Excel (.xlsx)
+                      </button>
+                    )}
+                    <button className="btn-search" onClick={fetchCampusJafung} disabled={isCampusLoading} style={{ padding: '8px 20px', fontSize: '0.8rem' }}>
+                      {isCampusLoading ? 'MENARIK DATA...' : 'REFRESH DATA'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="profile-card-body">
+                  {isCampusLoading ? (
+                    <div style={{ textAlign: 'center', padding: '60px' }}>
+                      <Loader2 className="animate-spin" size={48} color="#005596" style={{ margin: '0 auto 24px' }} />
+                      <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e293b' }}>Sedang Mengambil Data...</h3>
+                      <p style={{ color: '#64748b', marginTop: '8px' }}>Proses ini mungkin memakan waktu beberapa menit tergantung jumlah dosen.</p>
+                      
+                      <div style={{ maxWidth: '500px', margin: '32px auto 0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>
+                          <span>Progress Pengambilan Data</span>
+                          <span>{campusProgress}%</span>
+                        </div>
+                        <div style={{ height: '12px', background: '#f1f5f9', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                          <div style={{ height: '100%', width: `${campusProgress}%`, background: 'var(--primary)', transition: 'width 0.3s ease' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : error && currentView === 'campus_jafung' ? (
+                    <div style={{ textAlign: 'center', padding: '60px', color: '#ef4444' }}>
+                      <AlertCircle size={48} style={{ marginBottom: '16px' }} />
+                      <h3 style={{ fontWeight: 800 }}>Terjadi Kesalahan</h3>
+                      <p style={{ marginTop: '8px', fontWeight: 600 }}>{error}</p>
+                      <button className="btn-search" onClick={fetchCampusJafung} style={{ marginTop: '24px' }}>COBA LAGI</button>
+                    </div>
+                  ) : campusJafungData ? (
+                    <div className="table-wrapper">
+                      <table className="info-table">
+                        <thead>
+                          <tr>
+                            <th>No</th>
+                            <th>Nama Dosen</th>
+                            <th>NIDN</th>
+                            <th>Jabatan Fungsional</th>
+                            <th>Nomor SK</th>
+                            <th>TMT Jabatan</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getGroupedCampusData().map((group, groupIdx) => (
+                            <React.Fragment key={groupIdx}>
+                              {group.records.map((record, recordIdx) => (
+                                <tr key={`${groupIdx}-${recordIdx}`}>
+                                  {recordIdx === 0 && (
+                                    <>
+                                      <td rowSpan={group.records.length} style={{ color: '#94a3b8', fontWeight: 700, verticalAlign: 'middle' }}>
+                                        {groupIdx + 1}
+                                      </td>
+                                      <td rowSpan={group.records.length} style={{ verticalAlign: 'middle' }}>
+                                        <strong>{group.nama_sdm}</strong>
+                                      </td>
+                                      <td rowSpan={group.records.length} style={{ verticalAlign: 'middle' }}>
+                                        <span className="status-badge" style={{ background: '#f1f5f9', color: '#475569' }}>
+                                          {group.nidn}
+                                        </span>
+                                      </td>
+                                    </>
+                                  )}
+                                  <td><strong style={{ color: 'var(--primary)' }}>{record.jabatan_fungsional}</strong></td>
+                                  <td>{record.sk || '-'}</td>
+                                  <td>{record.tanggal_mulai || '-'}</td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
+                      <AlertCircle size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                      <p>Klik tombol 'REFRESH DATA' untuk mulai menarik data jafung seluruh dosen.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
