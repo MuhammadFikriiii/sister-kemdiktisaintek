@@ -115,4 +115,9 @@ export const getPhotoBlob = async (id_sdm) => {
   return URL.createObjectURL(response.data);
 };
 
+export const getBidangIlmu = async (id_sdm) => {
+  const response = await api.get(`/data_pribadi/bidang_ilmu/${id_sdm}`);
+  return response.data;
+};
+
 export default api;

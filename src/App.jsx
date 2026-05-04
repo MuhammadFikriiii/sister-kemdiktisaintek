@@ -73,6 +73,7 @@ function App() {
 
   // States for Jafung Kampus
   const [campusJafungData, setCampusJafungData] = useState(null);
+  const [campusBidangIlmuData, setCampusBidangIlmuData] = useState(null);
   const [campusProgress, setCampusProgress] = useState(0);
   const [isCampusLoading, setIsCampusLoading] = useState(false);
 
@@ -179,6 +180,7 @@ function App() {
       if (tab === 'bkd_laporan') res = await sisterApi.getLaporanAkhirBKD(id_sdm);
       if (tab === 'publikasi') res = await sisterApi.getPublikasi(id_sdm);
       if (tab === 'pengabdian') res = await sisterApi.getPengabdian(id_sdm);
+      if (tab === 'bidang_ilmu') res = await sisterApi.getBidangIlmu(id_sdm);
 
       let finalData = res;
       if (res && res.data && !Array.isArray(res)) finalData = res.data;
@@ -211,9 +213,25 @@ function App() {
       ];
       let allLecturersMap = new Map();
 
-      for (let f = 0; f < fragments.length; f++) {
-        const fragment = fragments[f];
-        setCampusProgress(Math.round(((f + 1) / fragments.length) * 20));
+      // First attempt: Broad wildcard search
+      try {
+        const sdmRes = await sisterApi.getCampusSDM(DEFAULT_ID_SP, '%%%');
+        const allSdm = Array.isArray(sdmRes) ? sdmRes : (sdmRes.data || []);
+        if (allSdm.length > 0) {
+          allSdm.forEach(l => { if (l.id_sdm) allLecturersMap.set(l.id_sdm, l); });
+        }
+      } catch (e) {
+        console.warn("Broad search failed");
+      }
+
+      // Exhaustive Fragment Search: Always run this to ensure coverage
+      // We use common fragments to bypass potential API result limits
+      const exhaustiveFragments = [...fragments, 'har', 'dik', 'ika', 'put', 'rat', 'sap', 'kur', 'hid', 'agu', 'set', 'pra'];
+      
+      for (let f = 0; f < exhaustiveFragments.length; f++) {
+        const fragment = exhaustiveFragments[f];
+        // Only update progress in the first 20%
+        setCampusProgress(Math.round(((f + 1) / exhaustiveFragments.length) * 20));
 
         try {
           const sdmRes = await sisterApi.getCampusSDM(DEFAULT_ID_SP, fragment);
@@ -221,9 +239,7 @@ function App() {
           chunk.forEach(l => {
             if (l.id_sdm) allLecturersMap.set(l.id_sdm, l);
           });
-        } catch (e) {
-          console.error(`Fragment ${fragment} failed`);
-        }
+        } catch (e) {}
       }
 
       const lecturers = Array.from(allLecturersMap.values());
@@ -249,10 +265,26 @@ function App() {
                 nidn: sdm.nidn
               });
             });
+          } else {
+            // Always include the lecturer even with no records
+            aggregatedData.push({
+              nama_sdm: sdm.nama_sdm,
+              nidn: sdm.nidn,
+              jabatan_fungsional: '-',
+              sk: '-',
+              tanggal_mulai: '-'
+            });
           }
-          // Note: Lecturers with no jafung records are now omitted as requested
         } catch (e) {
           console.error(`Failed to fetch jafung for ${sdm.nama_sdm}`);
+          // Add as empty record if request fails
+          aggregatedData.push({
+            nama_sdm: sdm.nama_sdm,
+            nidn: sdm.nidn,
+            jabatan_fungsional: '(Gagal Memuat)',
+            sk: '-',
+            tanggal_mulai: '-'
+          });
         }
       }
 
@@ -260,6 +292,90 @@ function App() {
     } catch (err) {
       const msg = err.response?.data?.message || err.message || "Gagal memuat data Jafung Kampus.";
       setError(msg);
+    } finally {
+      setIsCampusLoading(false);
+    }
+  };
+
+  const fetchCampusBidangIlmu = async () => {
+    if (isCampusLoading) return;
+    setIsCampusLoading(true);
+    setCampusProgress(0);
+    setCampusBidangIlmuData(null);
+    setCurrentView('campus_bidang_ilmu');
+    setIsSidebarOpen(false);
+    setError(null);
+
+    try {
+      const fragments = ['abd', 'ahm', 'adi', 'agu', 'aka', 'ala', 'ama', 'ana', 'and', 'ang', 'ani', 'ans', 'ant', 'ara', 'ari', 'arm', 'art', 'ary', 'asa', 'ase', 'asi', 'asm', 'asr', 'ast', 'ati', 'awa', 'ayu', 'bag', 'bah', 'bam', 'bas', 'bud', 'car', 'cha', 'dah', 'dam', 'dan', 'dar', 'ded', 'den', 'der', 'dew', 'dha', 'dia', 'dik', 'din', 'dwi', 'edy', 'eka', 'eko', 'end', 'eny', 'era', 'eri', 'ern', 'est', 'eva', 'fad', 'faj', 'far', 'fat', 'fau', 'feb', 'fer', 'fit', 'gha', 'gun', 'gus', 'had', 'haf', 'hak', 'hal', 'ham', 'han', 'har', 'has', 'hel', 'hen', 'her', 'hid', 'him', 'hus', 'iam', 'ich', 'ida', 'ifr', 'ikh', 'ila', 'ima', 'ina', 'ind', 'ira', 'irm', 'ism', 'ist', 'ita', 'iva', 'iza', 'jaz', 'joh', 'jum', 'jus', 'kar', 'kas', 'kho', 'kri', 'kun', 'kur', 'kus', 'lan', 'lar', 'lat', 'len', 'les', 'lia', 'lif', 'lil', 'lim', 'lin', 'lis', 'lum', 'lus', 'lut', 'maa', 'mad', 'mag', 'mah', 'mai', 'mal', 'mam', 'man', 'mar', 'mas', 'mat', 'mau', 'may', 'meg', 'mei', 'mel', 'met', 'mif', 'moh', 'muh', 'mul', 'mun', 'mur', 'mus', 'mut', 'nad', 'naf', 'nan', 'nar', 'nas', 'nat', 'nav', 'naz', 'nen', 'nia', 'nik', 'nil', 'nin', 'nir', 'nis', 'nit', 'nov', 'nur', 'oct', 'ona', 'ovi', 'pam', 'pan', 'par', 'per', 'pra', 'pri', 'puj', 'pur', 'pus', 'put', 'qod', 'rad', 'rah', 'rai', 'raj', 'rak', 'ram', 'ran', 'rar', 'rat', 'ray', 'ren', 'res', 'ret', 'rez', 'ria', 'rid', 'rif', 'rik', 'rin', 'ris', 'riz', 'rob', 'roc', 'roh', 'roj', 'rom', 'ron', 'ros', 'roy', 'rud', 'rum', 'rus', 'sab', 'sad', 'saf', 'sah', 'sai', 'sak', 'sal', 'sam', 'san', 'sap', 'sar', 'sas', 'sat', 'say', 'sel', 'sep', 'set', 'sha', 'shf', 'sho', 'sia', 'sid', 'sif', 'sig', 'sil', 'sim', 'sin', 'sir', 'sit', 'sla', 'sof', 'son', 'sri', 'sub', 'sud', 'sug', 'suh', 'suk', 'sul', 'sum', 'sun', 'sup', 'sur', 'sus', 'sut', 'suw', 'sya', 'syah', 'syar', 'syih', 'syuk', 'tah', 'tam', 'tan', 'tar', 'tau', 'ted', 'ten', 'ter', 'tet', 'tit', 'tri', 'tut', 'umi', 'uta', 'uti', 'ver', 'vic', 'vid', 'vir', 'vit', 'wah', 'wal', 'wan', 'war', 'wat', 'wen', 'wia', 'wid', 'wig', 'wik', 'win', 'wir', 'wis', 'wiw', 'wiy', 'yan', 'yar', 'yas', 'yat', 'yef', 'yen', 'yoh', 'yos', 'yud', 'yul', 'yun', 'yur', 'yus', 'zai', 'zak', 'zul', 'sti', 'pan', 'cas', 'eti'];
+      let allLecturersMap = new Map();
+
+      // First attempt: Broad wildcard search
+      try {
+        const sdmRes = await sisterApi.getCampusSDM(DEFAULT_ID_SP, '%%%');
+        const allSdm = Array.isArray(sdmRes) ? sdmRes : (sdmRes.data || []);
+        if (allSdm.length > 0) {
+          allSdm.forEach(l => { if (l.id_sdm) allLecturersMap.set(l.id_sdm, l); });
+        }
+      } catch (e) {}
+
+      // Exhaustive search
+      const exhaustiveFragments = [...fragments, 'har', 'dik', 'ika', 'put', 'rat', 'sap', 'kur', 'hid', 'agu', 'set', 'pra'];
+      for (let f = 0; f < exhaustiveFragments.length; f++) {
+        const fragment = exhaustiveFragments[f];
+        setCampusProgress(Math.round(((f + 1) / exhaustiveFragments.length) * 20));
+        try {
+          const sdmRes = await sisterApi.getCampusSDM(DEFAULT_ID_SP, fragment);
+          const chunk = Array.isArray(sdmRes) ? sdmRes : (sdmRes.data || []);
+          chunk.forEach(l => { if (l.id_sdm) allLecturersMap.set(l.id_sdm, l); });
+        } catch (e) {}
+      }
+
+      const lecturers = Array.from(allLecturersMap.values());
+      let aggregatedData = [];
+      for (let i = 0; i < lecturers.length; i++) {
+        const sdm = lecturers[i];
+        setCampusProgress(20 + Math.round(((i + 1) / lecturers.length) * 80));
+        try {
+          const res = await sisterApi.getBidangIlmu(sdm.id_sdm);
+          // Enhanced resilient data extraction
+          let rawData = res?.data?.data || res?.data || res;
+          let records = Array.isArray(rawData) ? rawData : (rawData && typeof rawData === 'object' && Object.keys(rawData).length > 0 ? [rawData] : []);
+          
+          if (records.length > 0) {
+            records.forEach(r => {
+              // Ensure we have the actual bidang name, sometimes it's nested or has different keys
+              const bidangName = r.kelompok_bidang || r.nama_bidang_ilmu || r.bidang_ilmu || (typeof r === 'string' ? r : '-');
+              if (bidangName !== '-') {
+                aggregatedData.push({
+                  ...r,
+                  kelompok_bidang: bidangName,
+                  nama_sdm: sdm.nama_sdm,
+                  nidn: sdm.nidn
+                });
+              }
+            });
+          } else {
+            // Fallback: If still empty, check if it's just a string or has any content
+            aggregatedData.push({
+              nama_sdm: sdm.nama_sdm,
+              nidn: sdm.nidn,
+              urutan: '-',
+              kelompok_bidang: '-'
+            });
+          }
+        } catch (e) {
+          aggregatedData.push({
+            nama_sdm: sdm.nama_sdm,
+            nidn: sdm.nidn,
+            urutan: '-',
+            kelompok_bidang: '(Gagal Memuat)'
+          });
+        }
+      }
+      setCampusBidangIlmuData(aggregatedData);
+    } catch (err) {
+      setError(err.message || "Gagal memuat data Bidang Ilmu Kampus.");
     } finally {
       setIsCampusLoading(false);
     }
@@ -285,6 +401,26 @@ function App() {
       }
     });
 
+    return groups;
+  };
+
+  const getGroupedBidangIlmuData = () => {
+    if (!campusBidangIlmuData) return [];
+    const groups = [];
+    let currentGroup = null;
+
+    campusBidangIlmuData.forEach(item => {
+      if (!currentGroup || currentGroup.nidn !== item.nidn) {
+        currentGroup = {
+          nama_sdm: item.nama_sdm,
+          nidn: item.nidn,
+          records: [item]
+        };
+        groups.push(currentGroup);
+      } else {
+        currentGroup.records.push(item);
+      }
+    });
     return groups;
   };
 
@@ -374,6 +510,9 @@ function App() {
       'sks': 'SKS',
       'tahun_pelaksanaan': 'Tahun Pelaksanaan',
       'lama_kegiatan': 'Lama Kegiatan',
+      'urutan': 'Urutan',
+      'kelompok_bidang': 'Kelompok Bidang Ilmu',
+      'id_kelompok_bidang': 'ID Kelompok Bidang'
 
     };
     return mapping[key] || key;
@@ -382,8 +521,8 @@ function App() {
   const getF = (obj, key) => (obj && obj[key] !== undefined && obj[key] !== null ? String(obj[key]) : '-');
 
   const handleExportExcel = () => {
-    const isGlobal = currentView === 'campus_jafung';
-    const targetData = isGlobal ? campusJafungData : tabData;
+    const isGlobal = currentView === 'campus_jafung' || currentView === 'campus_bidang_ilmu';
+    const targetData = currentView === 'campus_jafung' ? campusJafungData : (currentView === 'campus_bidang_ilmu' ? campusBidangIlmuData : tabData);
     
     if (!targetData) return;
 
@@ -423,6 +562,30 @@ function App() {
           });
         });
         sheetName = "Jafung_Kampus_Global";
+      } else if (currentView === 'campus_bidang_ilmu') {
+        const groupedData = getGroupedBidangIlmuData();
+        let currentRow = 1;
+        groupedData.forEach((group, idx) => {
+          const rowCount = group.records.length;
+          if (rowCount > 1) {
+            merges.push(
+              { s: { r: currentRow, c: 0 }, e: { r: currentRow + rowCount - 1, c: 0 } },
+              { s: { r: currentRow, c: 1 }, e: { r: currentRow + rowCount - 1, c: 1 } },
+              { s: { r: currentRow, c: 2 }, e: { r: currentRow + rowCount - 1, c: 2 } }
+            );
+          }
+          group.records.forEach(record => {
+            exportRows.push({
+              'No': idx + 1,
+              'Nama Dosen': group.nama_sdm,
+              'NIDN': group.nidn,
+              'Urutan': record.urutan,
+              'Kelompok Bidang': record.kelompok_bidang
+            });
+            currentRow++;
+          });
+        });
+        sheetName = "Bidang_Ilmu_Kampus";
       } else if (activeTab === 'kepegawaian') {
         const row = {};
         Object.keys(tabData).forEach(k => {
@@ -492,6 +655,8 @@ function App() {
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
       const fileName = currentView === 'campus_jafung' 
         ? `SISTER_JAFUNG_KAMPUS_ALL_${new Date().toISOString().split('T')[0]}.xlsx`
+        : currentView === 'campus_bidang_ilmu'
+        ? `SISTER_BIDANG_ILMU_KAMPUS_ALL_${new Date().toISOString().split('T')[0]}.xlsx`
         : `SISTER_${activeTab}_${selectedLecturer.nama_sdm.replace(/\s+/g, '_')}.xlsx`;
         
       XLSX.writeFile(wb, fileName);
@@ -610,6 +775,9 @@ function App() {
             <div className={`nav-item ${currentView === 'campus_jafung' ? 'active' : ''}`} onClick={() => { fetchCampusJafung(); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}>
               <Database size={20} /> <span>Jafung Kampus</span>
             </div>
+            <div className={`nav-item ${currentView === 'campus_bidang_ilmu' ? 'active' : ''}`} onClick={() => { fetchCampusBidangIlmu(); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}>
+              <Globe size={20} /> <span>Bidang Ilmu Kampus</span>
+            </div>
 
             <div className="menu-label">PENARIKAN DATA</div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'kepegawaian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('kepegawaian'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><UserCheck size={20} /> <span>Kepegawaian</span></div>
@@ -626,6 +794,7 @@ function App() {
 
             <div className="menu-label">PENGABDIAN</div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pengabdian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pengabdian'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><HeartHandshake size={20} /> <span>Pengabdian Masyarakat</span></div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'bidang_ilmu' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('bidang_ilmu'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><Globe size={20} /> <span>Bidang Ilmu</span></div>
           </div>
         </aside>
 
@@ -652,28 +821,29 @@ function App() {
                 ))}
               </div>
             </div>
-          ) : currentView === 'campus_jafung' ? (
+          ) : (currentView === 'campus_jafung' || currentView === 'campus_bidang_ilmu') ? (
             <div className="detail-page" style={{ animation: 'fadeIn 0.4s ease-out' }}>
-              <div className="banner-blue">
-                <Database size={48} />
+              <div className={currentView === 'campus_jafung' ? "banner-blue" : "banner-red"}>
+                {currentView === 'campus_jafung' ? <Database size={48} /> : <Globe size={48} />}
                 <div className="banner-text">
-                  <h1>Data Jabatan Fungsional Kampus</h1>
-                  <p style={{ opacity: 0.9, fontSize: '1rem', fontWeight: 600 }}>Menampilkan seluruh riwayat jafung dosen STIE Pancasetia secara kolektif.</p>
+                  <h1>{currentView === 'campus_jafung' ? "Data Jabatan Fungsional Kampus" : "Data Bidang Ilmu Kampus"}</h1>
+                  <p style={{ opacity: 0.9, fontSize: '1rem', fontWeight: 600 }}>Menampilkan seluruh riwayat {currentView === 'campus_jafung' ? 'jafung' : 'bidang ilmu'} dosen STIE Pancasetia secara kolektif.</p>
                 </div>
               </div>
 
               <div className="profile-card">
                 <div className="profile-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <Database size={22} /> REKAPITULASI JAFUNG SELURUH DOSEN
+                    {currentView === 'campus_jafung' ? <Database size={22} /> : <Globe size={22} />} 
+                    REKAPITULASI {currentView === 'campus_jafung' ? 'JAFUNG' : 'BIDANG ILMU'} SELURUH DOSEN
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    {campusJafungData && (
+                    {(campusJafungData || campusBidangIlmuData) && (
                       <button className="btn-detail-row" onClick={handleExportExcel} style={{ background: '#166534', color: 'white', borderColor: '#166534' }}>
                         <FileText size={16} style={{ marginRight: '6px' }} /> Export Excel (.xlsx)
                       </button>
                     )}
-                    <button className="btn-search" onClick={fetchCampusJafung} disabled={isCampusLoading} style={{ padding: '8px 20px', fontSize: '0.8rem' }}>
+                    <button className="btn-search" onClick={currentView === 'campus_jafung' ? fetchCampusJafung : fetchCampusBidangIlmu} disabled={isCampusLoading} style={{ padding: '8px 20px', fontSize: '0.8rem' }}>
                       {isCampusLoading ? 'MENARIK DATA...' : 'REFRESH DATA'}
                     </button>
                   </div>
@@ -696,14 +866,14 @@ function App() {
                         </div>
                       </div>
                     </div>
-                  ) : error && currentView === 'campus_jafung' ? (
+                  ) : error && (currentView === 'campus_jafung' || currentView === 'campus_bidang_ilmu') ? (
                     <div style={{ textAlign: 'center', padding: '60px', color: '#ef4444' }}>
                       <AlertCircle size={48} style={{ marginBottom: '16px' }} />
                       <h3 style={{ fontWeight: 800 }}>Terjadi Kesalahan</h3>
                       <p style={{ marginTop: '8px', fontWeight: 600 }}>{error}</p>
-                      <button className="btn-search" onClick={fetchCampusJafung} style={{ marginTop: '24px' }}>COBA LAGI</button>
+                      <button className="btn-search" onClick={currentView === 'campus_jafung' ? fetchCampusJafung : fetchCampusBidangIlmu} style={{ marginTop: '24px' }}>COBA LAGI</button>
                     </div>
-                  ) : campusJafungData ? (
+                  ) : (currentView === 'campus_jafung' ? campusJafungData : campusBidangIlmuData) ? (
                     <div className="table-wrapper">
                       <table className="info-table">
                         <thead>
@@ -711,13 +881,22 @@ function App() {
                             <th>No</th>
                             <th>Nama Dosen</th>
                             <th>NIDN</th>
-                            <th>Jabatan Fungsional</th>
-                            <th>Nomor SK</th>
-                            <th>TMT Jabatan</th>
+                            {currentView === 'campus_jafung' ? (
+                              <>
+                                <th>Jabatan Fungsional</th>
+                                <th>Nomor SK</th>
+                                <th>TMT Jabatan</th>
+                              </>
+                            ) : (
+                              <>
+                                <th>Urutan</th>
+                                <th>Kelompok Bidang Ilmu</th>
+                              </>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
-                          {getGroupedCampusData().map((group, groupIdx) => (
+                          {(currentView === 'campus_jafung' ? getGroupedCampusData() : getGroupedBidangIlmuData()).map((group, groupIdx) => (
                             <React.Fragment key={groupIdx}>
                               {group.records.map((record, recordIdx) => (
                                 <tr key={`${groupIdx}-${recordIdx}`}>
@@ -736,9 +915,18 @@ function App() {
                                       </td>
                                     </>
                                   )}
-                                  <td><strong style={{ color: 'var(--primary)' }}>{record.jabatan_fungsional}</strong></td>
-                                  <td>{record.sk || '-'}</td>
-                                  <td>{record.tanggal_mulai || '-'}</td>
+                                  {currentView === 'campus_jafung' ? (
+                                    <>
+                                      <td><strong style={{ color: 'var(--primary)' }}>{record.jabatan_fungsional}</strong></td>
+                                      <td>{record.sk || '-'}</td>
+                                      <td>{record.tanggal_mulai || '-'}</td>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <td>{record.urutan}</td>
+                                      <td><strong style={{ color: 'var(--primary)' }}>{record.kelompok_bidang}</strong></td>
+                                    </>
+                                  )}
                                 </tr>
                               ))}
                             </React.Fragment>
@@ -749,7 +937,7 @@ function App() {
                   ) : (
                     <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
                       <AlertCircle size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
-                      <p>Klik tombol 'REFRESH DATA' untuk mulai menarik data jafung seluruh dosen.</p>
+                      <p>Klik tombol 'REFRESH DATA' untuk mulai menarik data {currentView === 'campus_jafung' ? 'jafung' : 'bidang ilmu'} seluruh dosen.</p>
                     </div>
                   )}
                 </div>

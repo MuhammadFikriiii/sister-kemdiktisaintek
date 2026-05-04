@@ -70,7 +70,21 @@ const LoginPage = ({ loginData, setLoginData, handleLogin, loading, error, setEr
             />
           </div>
 
-          <button type="submit" disabled={loading} className="btn-search" style={{ width: '100%', padding: '18px', borderRadius: '16px', fontSize: '1rem', fontWeight: 800, letterSpacing: '1px', background: loading ? '#94a3b8' : '#ac1234', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+          <button type="submit" disabled={loading} className="btn-search" style={{ 
+            width: '100%', 
+            padding: '18px', 
+            borderRadius: '16px', 
+            fontSize: '1rem', 
+            fontWeight: 800, 
+            letterSpacing: '1px', 
+            background: loading ? '#94a3b8' : '#ac1234', 
+            color: 'white',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            gap: '10px',
+            border: 'none'
+          }}>
             {loading ? <><Loader2 className="animate-spin" size={20} /> MEMVERIFIKASI...</> : "MASUK SEKARANG"}
           </button>
         </form>
