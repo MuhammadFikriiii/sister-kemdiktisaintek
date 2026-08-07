@@ -30,6 +30,21 @@ export const login = async (credentials) => {
   }
 };
 
+export const loginBackend = async (credentials) => {
+  try {
+    const response = await axios.post('/api/login', credentials);
+    const token = response.data.token || response.data.kode_barrel;
+    if (token) {
+      authToken = token;
+      localStorage.setItem('sister_token', token);
+    }
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Username atau password salah.");
+  }
+};
+
+
 export const searchSDM = async (nama, id_sp = '') => {
   const response = await api.get(`/referensi/sdm`, {
     params: { id_sp, nama }
@@ -41,6 +56,13 @@ export const searchSDM = async (nama, id_sp = '') => {
 export const getCampusSDM = async (id_sp, nama = '%%%') => {
   const response = await api.get(`/referensi/sdm`, {
     params: { id_sp, nama, per_page: 1000 }
+  });
+  return response.data;
+};
+
+export const getAllSDM = async () => {
+  const response = await api.get(`/referensi/sdm`, {
+    params: { nama: '%%%' }
   });
   return response.data;
 };

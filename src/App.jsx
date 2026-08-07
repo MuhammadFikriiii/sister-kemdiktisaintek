@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, LogOut, Loader2, User, Briefcase,
   GraduationCap, AlertCircle, ChevronRight,
@@ -6,7 +6,8 @@ import {
   UserCheck, Award, BookOpen, Clock,
   FileText, ShieldCheck, Fingerprint, Globe,
   Link, Download, X, File, Eye, ListChecks,
-  FileBarChart, Newspaper, ExternalLink, Menu, X as CloseIcon, HeartHandshake
+  FileBarChart, Newspaper, ExternalLink, Menu, X as CloseIcon, HeartHandshake,
+  Upload, Trash2
 } from 'lucide-react';
 import * as sisterApi from './services/api';
 import './App.css';
@@ -16,6 +17,108 @@ import XLSX from 'xlsx-js-style';
 import SisterLogo from './components/SisterLogo';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
+
+const BIDANG_IMPORT_STORAGE_KEY = 'sister_imported_rumpun_ilmu_rows';
+
+const extractArray = (payload) => {
+  const data = payload?.data?.data ?? payload?.data ?? payload;
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object' && Object.keys(data).length > 0) return [data];
+  return [];
+};
+
+const cleanBidangText = (value) => String(value || '')
+  .replace(/^\s*\[[^\]]+\]\s*/, '')
+  .trim();
+
+const parseBidangIlmu = (kelompok_bidang_str) => {
+  let rumpun = '-';
+  let pohon = '-';
+  let kelompok = '-';
+  let cabang = '-';
+
+  const cleanText = cleanBidangText(kelompok_bidang_str);
+  if (!cleanText || cleanText === '-') return { rumpun, pohon, kelompok, cabang };
+
+  const parts = cleanText.split(/\s+--\s+/);
+  if (parts.length > 1) {
+    cabang = parts.slice(1).join(' -- ').trim() || '-';
+  }
+  
+  const mainParts = parts[0].split(/\s+-\s+/).map(part => part.trim()).filter(Boolean);
+  if (mainParts.length > 0) rumpun = mainParts[0].trim();
+  if (mainParts.length > 1) pohon = mainParts[1].trim();
+  if (mainParts.length > 2) kelompok = mainParts[2].trim();
+
+  return { rumpun, pohon, kelompok, cabang };
+};
+
+const normalizeBidangIlmuRecord = (record, lecturer = {}, fallbackOrder = '-') => {
+  const rawBidangName = record?.kelompok_bidang || record?.nama_bidang_ilmu || record?.bidang_ilmu || (typeof record === 'string' ? record : '-');
+  const bidangName = cleanBidangText(rawBidangName) || '-';
+  const parsed = parseBidangIlmu(bidangName);
+
+  return {
+    ...(record && typeof record === 'object' ? record : {}),
+    id_sdm: lecturer.id_sdm,
+    nama_sdm: lecturer.nama_sdm,
+    nidn: lecturer.nidn || lecturer.nuptk || '-',
+    urutan: record?.urutan || fallbackOrder,
+    id_kelompok_bidang: record?.id_kelompok_bidang || '-',
+    kelompok_bidang: bidangName,
+    ...parsed
+  };
+};
+
+const normalizeLookupText = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace(/\s+/g, ' ');
+
+const normalizeImportHeader = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9]/g, '');
+
+const cleanImportValue = (value) => {
+  if (value === undefined || value === null) return '-';
+  const text = String(value).trim();
+  return text || '-';
+};
+
+const getImportCell = (row, aliases) => {
+  const aliasSet = new Set(aliases.map(normalizeImportHeader));
+  const found = Object.entries(row).find(([key]) => aliasSet.has(normalizeImportHeader(key)));
+  return cleanImportValue(found?.[1]);
+};
+
+const loadImportedBidangIlmuRows = () => {
+  try {
+    const rows = JSON.parse(localStorage.getItem(BIDANG_IMPORT_STORAGE_KEY) || '[]');
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  }
+};
+
+const getImportedBidangRows = (rows, lecturer = {}) => {
+  const targetNidn = normalizeLookupText(lecturer.nidn || lecturer.nuptk);
+  const targetName = normalizeLookupText(lecturer.nama_sdm || lecturer.nama || lecturer.name);
+
+  return rows.filter(row => {
+    const rowNidn = normalizeLookupText(row.nidn || row.nuptk);
+    const rowName = normalizeLookupText(row.nama_sdm || row.nama || row.name);
+    return (targetNidn && rowNidn && targetNidn === rowNidn) || (targetName && rowName && targetName === rowName);
+  });
+};
+
+const hydrateImportedBidangRecord = (record, lecturer = {}, index = 0) => ({
+  ...record,
+  id_sdm: lecturer.id_sdm || record.id_sdm || '-',
+  nama_sdm: lecturer.nama_sdm || record.nama_sdm || '-',
+  nidn: lecturer.nidn || lecturer.nuptk || record.nidn || '-',
+  urutan: record.urutan || index + 1
+});
 
 // Component for Authenticated Photo Loading
 const SdmAvatar = ({ id_sdm, nama, size = 'sm' }) => {
@@ -28,7 +131,7 @@ const SdmAvatar = ({ id_sdm, nama, size = 'sm' }) => {
       try {
         url = await sisterApi.getPhotoBlob(id_sdm);
         setImgUrl(url);
-      } catch (err) {
+      } catch {
         setImgUrl(`https://ui-avatars.com/api/?name=${nama}&background=f1f5f9&color=005596&bold=true`);
       } finally {
         setLoading(false);
@@ -76,6 +179,8 @@ function App() {
   const [campusBidangIlmuData, setCampusBidangIlmuData] = useState(null);
   const [campusProgress, setCampusProgress] = useState(0);
   const [isCampusLoading, setIsCampusLoading] = useState(false);
+  const [importedBidangIlmuRows, setImportedBidangIlmuRows] = useState(() => loadImportedBidangIlmuRows());
+  const bidangImportInputRef = useRef(null);
 
   const [loginData, setLoginData] = useState({
     username: "",
@@ -103,36 +208,12 @@ function App() {
         throw new Error("Harap isi username dan password.");
       }
 
-      let actualCredentials = null;
-      const customUsersStr = import.meta.env.VITE_CUSTOM_USERS;
-
-      if (customUsersStr) {
-        try {
-          const customUsers = JSON.parse(customUsersStr);
-          const matchedUser = customUsers.find(
-            u => u.username === loginData.username && u.password === loginData.password
-          );
-
-          if (matchedUser) {
-            actualCredentials = {
-              username: import.meta.env.VITE_SISTER_USERNAME,
-              password: import.meta.env.VITE_SISTER_PASSWORD,
-              id_pengguna: import.meta.env.VITE_SISTER_ID_PENGGUNA
-            };
-          }
-        } catch (e) {
-          console.error("Gagal mem-parsing VITE_CUSTOM_USERS", e);
-        }
-      }
-
-      if (!actualCredentials) {
-        throw new Error("Username atau password salah.");
-      }
-
-      await sisterApi.login(actualCredentials);
+      await sisterApi.loginBackend({
+        username: loginData.username,
+        password: loginData.password
+      });
       setIsLoggedIn(true);
     } catch (err) {
-      // Production ready: Only show friendly message, no technical logs
       setError(err.message || "Autentikasi gagal. Sesi masuk tidak valid.");
     } finally {
       setLoading(false);
@@ -146,6 +227,85 @@ function App() {
     setTabData(null);
     setSearchQuery('');
     setIsLoggedIn(false);
+  };
+
+  const handleImportBidangIlmu = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '-' });
+
+      const normalizedRows = rows.map((row, index) => {
+        const nama_sdm = getImportCell(row, ['Nama Dosen', 'Nama SDM', 'Nama', 'Dosen']);
+        const nidn = getImportCell(row, ['NIDN', 'NIDN NUPTK', 'NIDN / NUPTK', 'NIDN/NUPTK', 'NUPTK']);
+        const rumpun = getImportCell(row, ['Rumpun Ilmu', 'Rumpun']);
+        const pohon = getImportCell(row, ['Pohon Ilmu', 'Pohon']);
+        const kelompok = getImportCell(row, ['Kelompok Ilmu', 'Kelompok']);
+        const cabang = getImportCell(row, ['Cabang Ilmu', 'Cabang']);
+
+        return {
+          source: 'import',
+          nama_sdm,
+          nidn,
+          urutan: getImportCell(row, ['Urutan', 'No']) !== '-' ? getImportCell(row, ['Urutan', 'No']) : index + 1,
+          id_kelompok_bidang: getImportCell(row, ['ID Kelompok Bidang', 'id_kelompok_bidang']),
+          rumpun,
+          pohon,
+          kelompok,
+          cabang,
+          kelompok_bidang: [rumpun, pohon, kelompok, cabang].filter(value => value && value !== '-').join(' - ') || '-'
+        };
+      }).filter(row => {
+        const hasLecturerKey = row.nama_sdm !== '-' || row.nidn !== '-';
+        const hasRumpunData = [row.rumpun, row.pohon, row.kelompok, row.cabang].some(value => value && value !== '-');
+        return hasLecturerKey && hasRumpunData;
+      });
+
+      if (normalizedRows.length === 0) {
+        throw new Error("File tidak punya baris valid. Pastikan ada kolom Nama/NIDN dan Rumpun/Pohon/Kelompok/Cabang Ilmu.");
+      }
+
+      localStorage.setItem(BIDANG_IMPORT_STORAGE_KEY, JSON.stringify(normalizedRows));
+      setImportedBidangIlmuRows(normalizedRows);
+      setCampusBidangIlmuData(null);
+      setTabData(null);
+      alert(`Berhasil import ${normalizedRows.length} baris Rumpun Ilmu.`);
+    } catch (err) {
+      alert(err.message || "Gagal import file Rumpun Ilmu.");
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const clearImportedBidangIlmu = () => {
+    localStorage.removeItem(BIDANG_IMPORT_STORAGE_KEY);
+    setImportedBidangIlmuRows([]);
+    setCampusBidangIlmuData(null);
+    setTabData(null);
+  };
+
+  const downloadBidangIlmuTemplate = () => {
+    const rows = [
+      ['Nama Dosen', 'NIDN', 'Rumpun Ilmu', 'Pohon Ilmu', 'Kelompok Ilmu', 'Cabang Ilmu'],
+      ['ASRUNI', '1109016701', 'RUMPUN ILMU TERAPAN', 'BISNIS-ILMU ATAU SAINS MANAJEMEN', '-', 'MANAJEMEN SUMBER DAYA MANUSIA']
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 28 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 42 },
+      { wch: 20 },
+      { wch: 40 }
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    XLSX.writeFile(wb, 'TEMPLATE_IMPORT_RUMPUN_ILMU.xlsx');
   };
 
   const handleSearch = async (e) => {
@@ -183,7 +343,17 @@ function App() {
       if (tab === 'bidang_ilmu') res = await sisterApi.getBidangIlmu(id_sdm);
 
       let finalData = res;
-      if (res && res.data && !Array.isArray(res)) finalData = res.data;
+      if (tab === 'bidang_ilmu') {
+        const importedRows = getImportedBidangRows(importedBidangIlmuRows, selectedLecturer?.id_sdm === id_sdm ? selectedLecturer : { id_sdm });
+        finalData = importedRows.length > 0
+          ? importedRows.map((record, recordIdx) => hydrateImportedBidangRecord(record, selectedLecturer, recordIdx))
+          : extractArray(res).map((record, recordIdx) => (
+            normalizeBidangIlmuRecord(record, { id_sdm }, recordIdx + 1)
+          ));
+      } else {
+        if (res && res.data && !Array.isArray(res)) finalData = res.data;
+      }
+      
       setTabData(finalData);
     } catch (err) {
       if (err.response?.status === 404) {
@@ -220,7 +390,7 @@ function App() {
         if (allSdm.length > 0) {
           allSdm.forEach(l => { if (l.id_sdm) allLecturersMap.set(l.id_sdm, l); });
         }
-      } catch (e) {
+      } catch {
         console.warn("Broad search failed");
       }
 
@@ -239,7 +409,9 @@ function App() {
           chunk.forEach(l => {
             if (l.id_sdm) allLecturersMap.set(l.id_sdm, l);
           });
-        } catch (e) {}
+        } catch {
+          // Abaikan fragmen yang gagal, fragmen lain masih bisa mengisi data.
+        }
       }
 
       const lecturers = Array.from(allLecturersMap.values());
@@ -275,7 +447,7 @@ function App() {
               tanggal_mulai: '-'
             });
           }
-        } catch (e) {
+        } catch {
           console.error(`Failed to fetch jafung for ${sdm.nama_sdm}`);
           // Add as empty record if request fails
           aggregatedData.push({
@@ -307,68 +479,70 @@ function App() {
     setError(null);
 
     try {
-      const fragments = ['abd', 'ahm', 'adi', 'agu', 'aka', 'ala', 'ama', 'ana', 'and', 'ang', 'ani', 'ans', 'ant', 'ara', 'ari', 'arm', 'art', 'ary', 'asa', 'ase', 'asi', 'asm', 'asr', 'ast', 'ati', 'awa', 'ayu', 'bag', 'bah', 'bam', 'bas', 'bud', 'car', 'cha', 'dah', 'dam', 'dan', 'dar', 'ded', 'den', 'der', 'dew', 'dha', 'dia', 'dik', 'din', 'dwi', 'edy', 'eka', 'eko', 'end', 'eny', 'era', 'eri', 'ern', 'est', 'eva', 'fad', 'faj', 'far', 'fat', 'fau', 'feb', 'fer', 'fit', 'gha', 'gun', 'gus', 'had', 'haf', 'hak', 'hal', 'ham', 'han', 'har', 'has', 'hel', 'hen', 'her', 'hid', 'him', 'hus', 'iam', 'ich', 'ida', 'ifr', 'ikh', 'ila', 'ima', 'ina', 'ind', 'ira', 'irm', 'ism', 'ist', 'ita', 'iva', 'iza', 'jaz', 'joh', 'jum', 'jus', 'kar', 'kas', 'kho', 'kri', 'kun', 'kur', 'kus', 'lan', 'lar', 'lat', 'len', 'les', 'lia', 'lif', 'lil', 'lim', 'lin', 'lis', 'lum', 'lus', 'lut', 'maa', 'mad', 'mag', 'mah', 'mai', 'mal', 'mam', 'man', 'mar', 'mas', 'mat', 'mau', 'may', 'meg', 'mei', 'mel', 'met', 'mif', 'moh', 'muh', 'mul', 'mun', 'mur', 'mus', 'mut', 'nad', 'naf', 'nan', 'nar', 'nas', 'nat', 'nav', 'naz', 'nen', 'nia', 'nik', 'nil', 'nin', 'nir', 'nis', 'nit', 'nov', 'nur', 'oct', 'ona', 'ovi', 'pam', 'pan', 'par', 'per', 'pra', 'pri', 'puj', 'pur', 'pus', 'put', 'qod', 'rad', 'rah', 'rai', 'raj', 'rak', 'ram', 'ran', 'rar', 'rat', 'ray', 'ren', 'res', 'ret', 'rez', 'ria', 'rid', 'rif', 'rik', 'rin', 'ris', 'riz', 'rob', 'roc', 'roh', 'roj', 'rom', 'ron', 'ros', 'roy', 'rud', 'rum', 'rus', 'sab', 'sad', 'saf', 'sah', 'sai', 'sak', 'sal', 'sam', 'san', 'sap', 'sar', 'sas', 'sat', 'say', 'sel', 'sep', 'set', 'sha', 'shf', 'sho', 'sia', 'sid', 'sif', 'sig', 'sil', 'sim', 'sin', 'sir', 'sit', 'sla', 'sof', 'son', 'sri', 'sub', 'sud', 'sug', 'suh', 'suk', 'sul', 'sum', 'sun', 'sup', 'sur', 'sus', 'sut', 'suw', 'sya', 'syah', 'syar', 'syih', 'syuk', 'tah', 'tam', 'tan', 'tar', 'tau', 'ted', 'ten', 'ter', 'tet', 'tit', 'tri', 'tut', 'umi', 'uta', 'uti', 'ver', 'vic', 'vid', 'vir', 'vit', 'wah', 'wal', 'wan', 'war', 'wat', 'wen', 'wia', 'wid', 'wig', 'wik', 'win', 'wir', 'wis', 'wiw', 'wiy', 'yan', 'yar', 'yas', 'yat', 'yef', 'yen', 'yoh', 'yos', 'yud', 'yul', 'yun', 'yur', 'yus', 'zai', 'zak', 'zul', 'sti', 'pan', 'cas', 'eti'];
-      let allLecturersMap = new Map();
+      const sdmRes = await sisterApi.getAllSDM();
+      const lecturers = extractArray(sdmRes)
+        .filter(sdm => sdm.id_sdm)
+        .sort((a, b) => String(a.nama_sdm || '').localeCompare(String(b.nama_sdm || ''), 'id'));
 
-      // First attempt: Broad wildcard search
-      try {
-        const sdmRes = await sisterApi.getCampusSDM(DEFAULT_ID_SP, '%%%');
-        const allSdm = Array.isArray(sdmRes) ? sdmRes : (sdmRes.data || []);
-        if (allSdm.length > 0) {
-          allSdm.forEach(l => { if (l.id_sdm) allLecturersMap.set(l.id_sdm, l); });
-        }
-      } catch (e) {}
-
-      // Exhaustive search
-      const exhaustiveFragments = [...fragments, 'har', 'dik', 'ika', 'put', 'rat', 'sap', 'kur', 'hid', 'agu', 'set', 'pra'];
-      for (let f = 0; f < exhaustiveFragments.length; f++) {
-        const fragment = exhaustiveFragments[f];
-        setCampusProgress(Math.round(((f + 1) / exhaustiveFragments.length) * 20));
-        try {
-          const sdmRes = await sisterApi.getCampusSDM(DEFAULT_ID_SP, fragment);
-          const chunk = Array.isArray(sdmRes) ? sdmRes : (sdmRes.data || []);
-          chunk.forEach(l => { if (l.id_sdm) allLecturersMap.set(l.id_sdm, l); });
-        } catch (e) {}
+      if (lecturers.length === 0) {
+        throw new Error("Daftar dosen tidak ditemukan dari API SISTER.");
       }
 
-      const lecturers = Array.from(allLecturersMap.values());
+      setCampusProgress(10);
       let aggregatedData = [];
       for (let i = 0; i < lecturers.length; i++) {
         const sdm = lecturers[i];
-        setCampusProgress(20 + Math.round(((i + 1) / lecturers.length) * 80));
+        setCampusProgress(10 + Math.round(((i + 1) / lecturers.length) * 90));
+
+        const importedRows = getImportedBidangRows(importedBidangIlmuRows, sdm);
+        if (importedRows.length > 0) {
+          aggregatedData.push(...importedRows.map((record, recordIdx) => (
+            hydrateImportedBidangRecord(record, sdm, recordIdx)
+          )));
+          continue;
+        }
+
         try {
           const res = await sisterApi.getBidangIlmu(sdm.id_sdm);
-          // Enhanced resilient data extraction
-          let rawData = res?.data?.data || res?.data || res;
-          let records = Array.isArray(rawData) ? rawData : (rawData && typeof rawData === 'object' && Object.keys(rawData).length > 0 ? [rawData] : []);
+          const records = extractArray(res);
           
           if (records.length > 0) {
-            records.forEach(r => {
-              // Ensure we have the actual bidang name, sometimes it's nested or has different keys
-              const bidangName = r.kelompok_bidang || r.nama_bidang_ilmu || r.bidang_ilmu || (typeof r === 'string' ? r : '-');
-              if (bidangName !== '-') {
-                aggregatedData.push({
-                  ...r,
-                  kelompok_bidang: bidangName,
-                  nama_sdm: sdm.nama_sdm,
-                  nidn: sdm.nidn
-                });
-              }
-            });
+            const normalizedRecords = records
+              .map((record, recordIdx) => normalizeBidangIlmuRecord(record, sdm, recordIdx + 1))
+              .filter(record => record.kelompok_bidang !== '-');
+
+            if (normalizedRecords.length > 0) {
+              aggregatedData.push(...normalizedRecords);
+            } else {
+              aggregatedData.push({
+                id_sdm: sdm.id_sdm,
+                nama_sdm: sdm.nama_sdm,
+                nidn: sdm.nidn || sdm.nuptk || '-',
+                urutan: '-',
+                rumpun: '-', pohon: '-', kelompok: '-', cabang: '-',
+                id_kelompok_bidang: '-',
+                kelompok_bidang: '-'
+              });
+            }
           } else {
-            // Fallback: If still empty, check if it's just a string or has any content
             aggregatedData.push({
+              id_sdm: sdm.id_sdm,
               nama_sdm: sdm.nama_sdm,
-              nidn: sdm.nidn,
+              nidn: sdm.nidn || sdm.nuptk || '-',
               urutan: '-',
+              rumpun: '-', pohon: '-', kelompok: '-', cabang: '-',
+              id_kelompok_bidang: '-',
               kelompok_bidang: '-'
             });
           }
-        } catch (e) {
+        } catch {
           aggregatedData.push({
+            id_sdm: sdm.id_sdm,
             nama_sdm: sdm.nama_sdm,
-            nidn: sdm.nidn,
+            nidn: sdm.nidn || sdm.nuptk || '-',
             urutan: '-',
+            rumpun: '-', pohon: '-', kelompok: '-', cabang: '-',
+            id_kelompok_bidang: '-',
             kelompok_bidang: '(Gagal Memuat)'
           });
         }
@@ -410,8 +584,10 @@ function App() {
     let currentGroup = null;
 
     campusBidangIlmuData.forEach(item => {
-      if (!currentGroup || currentGroup.nidn !== item.nidn) {
+      const groupKey = item.id_sdm || item.nidn || item.nama_sdm;
+      if (!currentGroup || currentGroup.groupKey !== groupKey) {
         currentGroup = {
+          groupKey,
           nama_sdm: item.nama_sdm,
           nidn: item.nidn,
           records: [item]
@@ -430,7 +606,7 @@ function App() {
     try {
       const data = await sisterApi.getEducationDetail(id);
       setEduDetail(data.data || data);
-    } catch (err) {
+    } catch {
       alert("Gagal memuat detail pendidikan.");
     } finally {
       setLoadingEdu(false);
@@ -511,6 +687,10 @@ function App() {
       'tahun_pelaksanaan': 'Tahun Pelaksanaan',
       'lama_kegiatan': 'Lama Kegiatan',
       'urutan': 'Urutan',
+      'rumpun': 'Rumpun Ilmu',
+      'pohon': 'Pohon Ilmu',
+      'kelompok': 'Kelompok Ilmu',
+      'cabang': 'Cabang Ilmu',
       'kelompok_bidang': 'Kelompok Bidang Ilmu',
       'id_kelompok_bidang': 'ID Kelompok Bidang'
 
@@ -521,7 +701,6 @@ function App() {
   const getF = (obj, key) => (obj && obj[key] !== undefined && obj[key] !== null ? String(obj[key]) : '-');
 
   const handleExportExcel = () => {
-    const isGlobal = currentView === 'campus_jafung' || currentView === 'campus_bidang_ilmu';
     const targetData = currentView === 'campus_jafung' ? campusJafungData : (currentView === 'campus_bidang_ilmu' ? campusBidangIlmuData : tabData);
     
     if (!targetData) return;
@@ -580,7 +759,11 @@ function App() {
               'Nama Dosen': group.nama_sdm,
               'NIDN': group.nidn,
               'Urutan': record.urutan,
-              'Kelompok Bidang': record.kelompok_bidang
+              'Rumpun Ilmu': record.rumpun || '-',
+              'Pohon Ilmu': record.pohon || '-',
+              'Kelompok Ilmu': record.kelompok || '-',
+              'Cabang Ilmu': record.cabang || '-',
+              'Kelompok Bidang Ilmu': record.kelompok_bidang
             });
             currentRow++;
           });
@@ -660,7 +843,7 @@ function App() {
         : `SISTER_${activeTab}_${selectedLecturer.nama_sdm.replace(/\s+/g, '_')}.xlsx`;
         
       XLSX.writeFile(wb, fileName);
-    } catch (err) {
+    } catch {
       alert("Gagal melakukan export Excel.");
     }
   };
@@ -836,8 +1019,35 @@ function App() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {currentView === 'campus_jafung' ? <Database size={22} /> : <Globe size={22} />} 
                     REKAPITULASI {currentView === 'campus_jafung' ? 'JAFUNG' : 'BIDANG ILMU'} SELURUH DOSEN
+                    {currentView === 'campus_bidang_ilmu' && importedBidangIlmuRows.length > 0 && (
+                      <span className="status-badge" style={{ background: '#dcfce7', color: '#166534' }}>
+                        Import: {importedBidangIlmuRows.length} baris
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {currentView === 'campus_bidang_ilmu' && (
+                      <>
+                        <input
+                          ref={bidangImportInputRef}
+                          type="file"
+                          accept=".xlsx,.xls,.csv"
+                          onChange={handleImportBidangIlmu}
+                          style={{ display: 'none' }}
+                        />
+                        <button className="btn-detail-row" onClick={() => bidangImportInputRef.current?.click()} style={{ background: '#005596', color: 'white', borderColor: '#005596' }}>
+                          <Upload size={16} style={{ marginRight: '6px' }} /> Import Rumpun Ilmu
+                        </button>
+                        <button className="btn-detail-row" onClick={downloadBidangIlmuTemplate}>
+                          <FileText size={16} style={{ marginRight: '6px' }} /> Template
+                        </button>
+                        {importedBidangIlmuRows.length > 0 && (
+                          <button className="btn-detail-row" onClick={clearImportedBidangIlmu} style={{ background: '#fff1f2', color: '#be123c', borderColor: '#fecdd3' }}>
+                            <Trash2 size={16} style={{ marginRight: '6px' }} /> Hapus Import
+                          </button>
+                        )}
+                      </>
+                    )}
                     {(campusJafungData || campusBidangIlmuData) && (
                       <button className="btn-detail-row" onClick={handleExportExcel} style={{ background: '#166534', color: 'white', borderColor: '#166534' }}>
                         <FileText size={16} style={{ marginRight: '6px' }} /> Export Excel (.xlsx)
@@ -890,7 +1100,10 @@ function App() {
                             ) : (
                               <>
                                 <th>Urutan</th>
-                                <th>Kelompok Bidang Ilmu</th>
+                                <th>Rumpun Ilmu</th>
+                                <th>Pohon Ilmu</th>
+                                <th>Kelompok Ilmu</th>
+                                <th>Cabang Ilmu</th>
                               </>
                             )}
                           </tr>
@@ -924,7 +1137,10 @@ function App() {
                                   ) : (
                                     <>
                                       <td>{record.urutan}</td>
-                                      <td><strong style={{ color: 'var(--primary)' }}>{record.kelompok_bidang}</strong></td>
+                                      <td><strong style={{ color: 'var(--primary)' }}>{record.rumpun}</strong></td>
+                                      <td>{record.pohon}</td>
+                                      <td>{record.kelompok}</td>
+                                      <td>{record.cabang}</td>
                                     </>
                                   )}
                                 </tr>
@@ -963,6 +1179,7 @@ function App() {
                   {activeTab === 'bkd_laporan' && <><FileBarChart size={22} /> LAPORAN AKHIR BKD</>}
                   {activeTab === 'publikasi' && <><Newspaper size={22} /> DAFTAR PUBLIKASI ILMIAH</>}
                   {activeTab === 'pengabdian' && <><ShieldCheck size={22} /> DAFTAR PENGABDIAN MASYARAKAT</>}
+                  {activeTab === 'bidang_ilmu' && <><Globe size={22} /> DATA BIDANG ILMU</>}
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     {(activeTab === 'bkd' || activeTab === 'pengajaran') && (
@@ -1177,6 +1394,43 @@ function App() {
                                 <td style={{ textAlign: 'center' }}>{getF(p, 'lama_kegiatan')}</td>
                               </tr>
                             ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {activeTab === 'bidang_ilmu' && (
+                        <table className="info-table">
+                          <thead>
+                            <tr>
+                              <th>Urutan</th>
+                              <th>ID Kelompok Bidang</th>
+                              <th>Rumpun Ilmu</th>
+                              <th>Pohon Ilmu</th>
+                              <th>Kelompok Ilmu</th>
+                              <th>Cabang Ilmu</th>
+                              <th>Kelompok Bidang Ilmu</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(Array.isArray(tabData) ? tabData : []).length > 0 ? (
+                              (Array.isArray(tabData) ? tabData : []).map((record, i) => (
+                                <tr key={i}>
+                                  <td>{getF(record, 'urutan')}</td>
+                                  <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#64748b' }}>{getF(record, 'id_kelompok_bidang')}</td>
+                                  <td><strong style={{ color: 'var(--primary)' }}>{getF(record, 'rumpun')}</strong></td>
+                                  <td>{getF(record, 'pohon')}</td>
+                                  <td>{getF(record, 'kelompok')}</td>
+                                  <td>{getF(record, 'cabang')}</td>
+                                  <td>{getF(record, 'kelompok_bidang')}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={7} style={{ textAlign: 'center', color: '#94a3b8', padding: '32px' }}>
+                                  Data bidang ilmu belum tersedia di SISTER.
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       )}
