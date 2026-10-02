@@ -1,0 +1,34 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Lindungi file sensitif agar tidak bisa diakses
+  <FilesMatch "^(\.env|api\.php)$">
+      Order allow,deny
+      Deny from all
+  </FilesMatch>
+
+  # Izinkan akses ke api.php khusus dari rewrite internal
+  <Files api.php>
+      Order allow,deny
+      Allow from all
+  </Files>
+
+  # Arahkan /api/* ke api.php
+  RewriteCond %{REQUEST_URI} ^/api/
+  RewriteRule ^api/(.*)$ api.php?endpoint=$1 [QSA,L]
+
+  # Arahkan semua URL lain ke index.html (SPA React)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ index.html [QSA,L]
+</IfModule>
+
+# Anti cache untuk index.html agar selalu update
+<Files index.html>
+    FileETag None
+    Header unset ETag
+    Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "Wed, 11 Jan 1984 05:00:00 GMT"
+</Files>
