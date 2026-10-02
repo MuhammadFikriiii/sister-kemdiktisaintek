@@ -953,21 +953,22 @@ function App() {
         
         <aside className={`sidebar ${isSidebarOpen ? 'mobile-open' : 'collapsed'}`}>
           <div className="sidebar-content">
-            <div className={`nav-item ${currentView === 'search' ? 'active' : ''}`} onClick={() => { setCurrentView('search'); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}><LayoutDashboard size={20} /> <span>Beranda</span></div>
+            <div className="menu-label">MENU UTAMA</div>
+            <div className={`nav-item ${currentView === 'search' ? 'active' : ''}`} onClick={() => { setCurrentView('search'); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}><LayoutDashboard size={20} /> <span>Data Dosen</span></div>
+            <div className={`nav-item ${currentView === 'pegawai' ? 'active' : ''}`} onClick={() => { setCurrentView('pegawai'); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}>
+              <Users size={20} /> <span>Data Pegawai</span>
+            </div>
             
-            <div className="menu-label">FITUR GLOBAL</div>
+            <div className="menu-label">REKAP KAMPUS</div>
             <div className={`nav-item ${currentView === 'campus_jafung' ? 'active' : ''}`} onClick={() => { fetchCampusJafung(); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}>
               <Database size={20} /> <span>Jafung Kampus</span>
             </div>
             <div className={`nav-item ${currentView === 'campus_bidang_ilmu' ? 'active' : ''}`} onClick={() => { fetchCampusBidangIlmu(); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}>
               <Globe size={20} /> <span>Bidang Ilmu Kampus</span>
             </div>
-            <div className={`nav-item ${currentView === 'pegawai' ? 'active' : ''}`} onClick={() => { setCurrentView('pegawai'); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}>
-              <Users size={20} /> <span>Data Pegawai Lokal</span>
-            </div>
 
-            <div className="menu-label">PENARIKAN DATA</div>
-            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'kepegawaian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('kepegawaian'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><UserCheck size={20} /> <span>Kepegawaian</span></div>
+            <div className="menu-label">DETAIL DOSEN TERPILIH</div>
+            <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'kepegawaian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('kepegawaian'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><UserCheck size={20} /> <span>Profil & Kepegawaian</span></div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'jafung' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('jafung'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><Award size={20} /> <span>Jabatan Fungsional</span></div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pendidikan' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pendidikan'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><BookOpen size={20} /> <span>Pendidikan Formal</span></div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'pengajaran' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('pengajaran'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><GraduationCap size={20} /> <span>Pengajaran</span></div>
