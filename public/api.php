@@ -91,6 +91,91 @@ if ($endpoint === 'login') {
     exit;
 }
 
+// ─── ROUTE: /api/pegawai ───────────────────────────────────────
+if ($endpoint === 'pegawai') {
+    // Database configuration for pegawai
+    $db_host = 'localhost';
+    $db_name = 'stiepanc_sister';
+    $db_user = 'stiepanc_sister';
+    $db_pass = '123Stiepan#';
+
+    try {
+        $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['message' => 'Database connection failed: ' . $e->getMessage()]);
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        try {
+            $stmt = $pdo->query("SELECT * FROM pegawai ORDER BY id DESC");
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(['data' => $data]);
+        } catch (PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to fetch data: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $nip = $_POST['nip'] ?? '';
+        $nama_pegawai = $_POST['nama_pegawai'] ?? '';
+        $gelar = $_POST['gelar'] ?? '';
+        $nomor_ktp = $_POST['nomor_ktp'] ?? '';
+        $email = $_POST['email'] ?? '';
+        $agama = $_POST['agama'] ?? '';
+        $tempat_lahir = $_POST['tempat_lahir'] ?? '';
+        $tanggal_lahir = $_POST['tanggal_lahir'] ?? null;
+        $jenis_kelamin = $_POST['jenis_kelamin'] ?? '';
+        $tahun_masuk = $_POST['tahun_masuk'] ?? null;
+        $alamat = $_POST['alamat'] ?? '';
+        $nomor_telepon = $_POST['nomor_telepon'] ?? '';
+
+        $foto = null;
+        if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = __DIR__ . '/uploads/pegawai/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            $ext = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
+            $filename = uniqid('foto_') . '.' . $ext;
+            $destination = $uploadDir . $filename;
+            if (move_uploaded_file($_FILES['foto']['tmp_name'], $destination)) {
+                $foto = 'uploads/pegawai/' . $filename;
+            }
+        }
+
+        try {
+            $sql = "INSERT INTO pegawai (foto, nip, nama_pegawai, gelar, nomor_ktp, email, agama, tempat_lahir, tanggal_lahir, jenis_kelamin, tahun_masuk, alamat, nomor_telepon) 
+                    VALUES (:foto, :nip, :nama_pegawai, :gelar, :nomor_ktp, :email, :agama, :tempat_lahir, :tanggal_lahir, :jenis_kelamin, :tahun_masuk, :alamat, :nomor_telepon)";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':foto' => $foto,
+                ':nip' => $nip,
+                ':nama_pegawai' => $nama_pegawai,
+                ':gelar' => $gelar,
+                ':nomor_ktp' => $nomor_ktp,
+                ':email' => $email,
+                ':agama' => $agama,
+                ':tempat_lahir' => $tempat_lahir,
+                ':tanggal_lahir' => $tanggal_lahir ? $tanggal_lahir : null,
+                ':jenis_kelamin' => $jenis_kelamin,
+                ':tahun_masuk' => $tahun_masuk ? $tahun_masuk : null,
+                ':alamat' => $alamat,
+                ':nomor_telepon' => $nomor_telepon
+            ]);
+            echo json_encode(['message' => 'Data pegawai berhasil disimpan', 'id' => $pdo->lastInsertId()]);
+        } catch (PDOException $e) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Gagal menyimpan: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+}
+
 // ─── ROUTE: Proxy semua /api/* lainnya ke SISTER ─────────────
 $sisterBase = 'https://sister-api.kemdiktisaintek.go.id/ws.php/1.0/';
 $sisterUrl  = $sisterBase . $endpoint;

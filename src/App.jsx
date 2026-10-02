@@ -7,7 +7,7 @@ import {
   FileText, ShieldCheck, Fingerprint, Globe,
   Link, Download, X, File, Eye, ListChecks,
   FileBarChart, Newspaper, ExternalLink, Menu, X as CloseIcon, HeartHandshake,
-  Upload, Trash2
+  Upload, Trash2, Users
 } from 'lucide-react';
 import * as sisterApi from './services/api';
 import './App.css';
@@ -17,6 +17,7 @@ import XLSX from 'xlsx-js-style';
 import SisterLogo from './components/SisterLogo';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
+import Pegawai from './components/Pegawai';
 
 const BIDANG_IMPORT_STORAGE_KEY = 'sister_imported_rumpun_ilmu_rows';
 
@@ -961,6 +962,9 @@ function App() {
             <div className={`nav-item ${currentView === 'campus_bidang_ilmu' ? 'active' : ''}`} onClick={() => { fetchCampusBidangIlmu(); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}>
               <Globe size={20} /> <span>Bidang Ilmu Kampus</span>
             </div>
+            <div className={`nav-item ${currentView === 'pegawai' ? 'active' : ''}`} onClick={() => { setCurrentView('pegawai'); if(window.innerWidth <= 1024) setIsSidebarOpen(false); }}>
+              <Users size={20} /> <span>Data Pegawai Lokal</span>
+            </div>
 
             <div className="menu-label">PENARIKAN DATA</div>
             <div className={`nav-item ${!selectedLecturer ? 'disabled' : ''} ${currentView === 'detail' && activeTab === 'kepegawaian' ? 'active' : ''}`} onClick={() => selectedLecturer && (setCurrentView('detail'), setActiveTab('kepegawaian'), window.innerWidth <= 1024 && setIsSidebarOpen(false))}><UserCheck size={20} /> <span>Kepegawaian</span></div>
@@ -982,7 +986,9 @@ function App() {
         </aside>
 
         <main className="content-body">
-          {currentView === 'search' ? (
+          {currentView === 'pegawai' ? (
+            <Pegawai />
+          ) : currentView === 'search' ? (
             <div className="welcome-card">
               <h1 style={{ fontSize: '2.5rem', fontWeight: 800 }}>Selamat Datang</h1>
               <p style={{ color: '#64748b', fontSize: '1.1rem', marginTop: '12px' }}>Cari dosen untuk melihat riwayat lengkap Kepegawaian, Pendidikan, BKD, dan Publikasi.</p>

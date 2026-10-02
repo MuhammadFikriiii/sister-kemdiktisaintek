@@ -1,0 +1,21 @@
+CREATE TABLE `pegawai` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `foto` VARCHAR(255) DEFAULT NULL,
+  `nip` VARCHAR(50) NOT NULL,
+  `nama_pegawai` VARCHAR(150) NOT NULL,
+  `gelar` VARCHAR(50) DEFAULT NULL,
+  `nomor_ktp` VARCHAR(20) NOT NULL,
+  `email` VARCHAR(100) DEFAULT NULL,
+  `agama` VARCHAR(50) DEFAULT NULL,
+  `tempat_lahir` VARCHAR(100) DEFAULT NULL,
+  `tanggal_lahir` DATE DEFAULT NULL,
+  `jenis_kelamin` ENUM('LAKI-LAKI', 'PEREMPUAN') NOT NULL,
+  `tahun_masuk` YEAR DEFAULT NULL,
+  `alamat` TEXT DEFAULT NULL,
+  `nomor_telepon` VARCHAR(20) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `nip_unique` (`nip`),
+  UNIQUE KEY `ktp_unique` (`nomor_ktp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
